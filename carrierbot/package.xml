@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>carrierbot</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="henrik@todo.todo">henrik</maintainer>
+  <license>TODO: License declaration</license>
+
+  <depend>rclpy</depend>
+  <depend>cartographer_ros</depend>
+  <depend>cartographer_ros_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+  <depend>ament_index_python</depend>
+  <depend>rviz2</depend>
+  <depend>turtlebot3_cartographer</depend>
+  <depend>nav_msgs</depend>
+  <depend>motion_msgs</depend>
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>carrierbot_interfaces</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+    <launch_files>
+      <file>launch/CBcartographer.launch.py</file>
+      <file>launch/CBteach_sim.launch.py</file>
+    </launch_files>
+  </export>
+</package>

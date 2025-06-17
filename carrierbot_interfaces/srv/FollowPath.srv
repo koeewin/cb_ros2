@@ -1,0 +1,4 @@
+string traj_file
+bool backwards
+---
+bool started
