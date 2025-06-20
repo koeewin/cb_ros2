@@ -4,8 +4,8 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
 from ament_index_python.packages import get_package_prefix
-from carrierbot_interfaces.srv import FollowPath
-from carrierbot_interfaces.msg import Flags
+from cb_interfaces.srv import FollowPath
+from cb_interfaces.msg import Flags
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformListener
@@ -28,7 +28,7 @@ class PPcontroller(Node):
         super().__init__('pp_control')
 
         # Subscriber for flags 
-        self.Flags_sub = self.create_subscription(Flags, 'carrierbot/Flags', self.listener_callback_flags, 10)
+        self.Flags_sub = self.create_subscription(Flags, 'cb/Flags', self.listener_callback_flags, 10)
 
         # Service named for path following
         self.service = self.create_service(FollowPath, '/follow_path', self.follow_path_callback)
@@ -43,7 +43,7 @@ class PPcontroller(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
         # Publisher for flags
-        self.Flags_pub = self.create_publisher(Flags, '/carrierbot/Flags', 10)
+        self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
         # Transform broadcaster for TF2 frames
         self.tf_broadcaster = TransformBroadcaster(self)

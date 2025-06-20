@@ -1,8 +1,8 @@
 import rclpy
 from rclpy.node import Node
-from carrierbot_interfaces.srv import EndPath
-from carrierbot_interfaces.srv import StartPath
-from carrierbot_interfaces.srv import RewritePath
+from cb_interfaces.srv import EndPath
+from cb_interfaces.srv import StartPath
+from cb_interfaces.srv import RewritePath
 from tf2_ros import TransformListener
 from tf2_ros import Buffer
 from visualization_msgs.msg import Marker

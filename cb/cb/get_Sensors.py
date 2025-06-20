@@ -5,7 +5,7 @@ import time
 import threading
 
 from geometry_msgs.msg import Point
-#from carrierbot_interfaces.msg import Panel
+#from cb_interfaces.msg import Panel
 from sensor_msgs.msg import Joy
 # Message constants
 MSG_CMD_SEND_HUMAN_POSITION = 0xAA
@@ -48,7 +48,7 @@ class UWBSerialReader(Node):
 
         # Publishers
         self.position_pub = self.create_publisher(Point, '/human/positionUWB', 10)
-        self.panel_pub = self.create_publisher(Joy, '/carrierbot/Panel', 10)
+        self.panel_pub = self.create_publisher(Joy, '/cb/Panel', 10)
 
         # Store latest values
         self.latest_point = Point()

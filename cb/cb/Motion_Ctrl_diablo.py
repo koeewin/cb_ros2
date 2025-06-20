@@ -3,7 +3,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from motion_msgs.msg import MotionCtrl
 from sensor_msgs.msg import Joy
-from carrierbot_interfaces.srv import ChangeCtrlmode
+from cb_interfaces.srv import ChangeCtrlmode
 
 # ROS2 node to manage control modes and motion commands for the DIABLO robot
 class Motionctrl_diablo(Node):
@@ -17,7 +17,7 @@ class Motionctrl_diablo(Node):
         self.cmd_vel_sub = self.create_subscription(Twist, '/cmd_vel', self.listener_callback_ppcontrl, 10)
         
         # Subscriber to manual input from the joystick
-        self.panel_sub = self.create_subscription(Joy, '/carrierbot/Panel', self.listener_callback_panel, 10)
+        self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
 
         # Publisher for motion control commands to DIABLO robot
         self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd', 10)

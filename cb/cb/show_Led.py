@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from carrierbot_interfaces.srv import ShowLED
+from cb_interfaces.srv import ShowLED
 from LEDControl import LEDControl  # Make sure this points to your LEDControl class
 
 class LEDServiceNode(Node):

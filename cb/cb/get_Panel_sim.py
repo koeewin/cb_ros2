@@ -11,7 +11,7 @@ class JoyGUINode(Node):
         super().__init__('joy_gui_node')
 
         # Publisher
-        self.panel_pub = self.create_publisher(Joy, '/carrierbot/Panel', 10)
+        self.panel_pub = self.create_publisher(Joy, '/cb/Panel', 10)
 
         # Initialize Joy message
         self.latest_panel = Joy()
@@ -20,7 +20,7 @@ class JoyGUINode(Node):
 
         # Setup GUI
         self.root = tk.Tk()
-        self.root.title("CarrierBot Joy Panel")
+        self.root.title("cb Joy Panel")
 
         # --- Directional controls ---
         direction_frame = tk.Frame(self.root)

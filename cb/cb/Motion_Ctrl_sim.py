@@ -2,13 +2,13 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
-from carrierbot_interfaces.srv import ChangeCtrlmode
+from cb_interfaces.srv import ChangeCtrlmode
 
 class Motionctrl_sim(Node):
     def __init__(self):
         super().__init__('motionctrl_sim')
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.panel_sub = self.create_subscription(Joy, '/carrierbot/Panel', self.listener_callback_panel, 10)
+        self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
         self.service = self.create_service(ChangeCtrlmode, '/change_ctrlmode', self.change_ctrlmode_callback)
         self.timer = self.create_timer(0.05, self.on_timer)
         self.cur_forw_vel_panel = 0

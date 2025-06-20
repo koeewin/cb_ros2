@@ -34,7 +34,7 @@ class CurrentAprilTag(Node):
         self.bridge = CvBridge()
 
         # Resolve workspace directory from ROS2 package path
-        self.dir_parts_ws = get_package_prefix('carrierbot').split(os.sep)
+        self.dir_parts_ws = get_package_prefix('cb').split(os.sep)
         self.dir_ws = os.sep.join(self.dir_parts_ws[:-2])
 
         # Expected camera resolution
@@ -44,7 +44,7 @@ class CurrentAprilTag(Node):
         self.size_AprilTag = 0.1615
 
         # Locate directory with calibration matrices
-        path_matrices_dir = os.path.join(self.dir_ws, 'src/carrierbot/camera_calib/camera_matrices')
+        path_matrices_dir = os.path.join(self.dir_ws, 'src/cb/camera_calib/camera_matrices')
 
         if not os.path.isdir(path_matrices_dir):
             self.get_logger().error("Directory of matrices doesn't exist!")

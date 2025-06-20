@@ -1,9 +1,9 @@
 import rclpy
 from rclpy.node import Node
-from carrierbot_interfaces.msg import Flags
+from cb_interfaces.msg import Flags
 from sensor_msgs.msg import Joy
 from cartographer_ros_msgs.srv import WriteState
-from carrierbot_interfaces.srv import EndPath, StartPath, RewritePath, FollowPath, ChangeCtrlmode
+from cb_interfaces.srv import EndPath, StartPath, RewritePath, FollowPath, ChangeCtrlmode
 from ament_index_python.packages import get_package_prefix
 from visualization_msgs.msg import Marker
 import os
@@ -11,20 +11,20 @@ import time
 
 class StateMachine(Node):
     def __init__(self):
-        super().__init__('state_machine_sim')
+        super().__init__('state_machine')
 
         # Subscriptions to input topics
-        self.Flags_sub = self.create_subscription(Flags, '/carrierbot/Flags', self.listener_callback_flags, 10)
-        self.panel_sub = self.create_subscription(Joy, '/carrierbot/Panel', self.listener_callback_panel, 10)
+        self.Flags_sub = self.create_subscription(Flags, '/cb/Flags', self.listener_callback_flags, 10)
+        self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
         self.landmark_sub = self.create_subscription(Marker, '/landmark', self.listener_callback_landmark, 2)
 
         # Publisher for sending cancel flag
-        self.Flags_pub = self.create_publisher(Flags, '/carrierbot/Flags', 10)
+        self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
         # Determine workspace path for file operations
-        self.dir_parts_ws = get_package_prefix('carrierbot').split(os.sep)
+        self.dir_parts_ws = get_package_prefix('cb').split(os.sep)
         self.dir_ws = os.sep.join(self.dir_parts_ws[:-2])
-        self.working_office = os.path.join(self.dir_ws,'src/carrierbot/path_files')
+        self.working_office = os.path.join(self.dir_ws,'src/cb/path_files')
 
         # State machine variables
         self.state = 1
@@ -103,6 +103,47 @@ class StateMachine(Node):
         # Uncomment for debugging
         # print(f'state: {self.state}')
         # print(f'substate: {self.substate}')
+        """
+        #----------------------------------------------------------------------------------------------
+        if self.state == 0:
+            path_files_path = os.path.join(self.dir_ws,'src/cb/path_files')
+            path_files_offices = os.listdir(path_files_path)
+            if self.substate == 0:
+                self.get_logger().info("Soll ein neues office gestartet werden? (button e = Nein, button f = Ja)")
+                self.substate = 1
+
+            if self.substate == 1:
+                if len(path_files_offices) < 3:
+                    if self.button_f == 1 or len(path_files_offices) == 0:
+                        new_office_path = os.path.join(path_files_path,f'office_{len(path_files_offices)+1}')
+                        os.mkdir(new_office_path)
+                        self.working_office = new_office_path
+                        self.state = 1
+                        self.substate = 0
+                    elif self.button_e == 1:
+                        self.substate = 2    
+                else:
+                    self.get_logger().info("Es kann kein neues office gestartet werden!")
+                    self.substate = 2
+            
+            elif self.substate == 2:
+                self.get_logger().info(f'W�hle ein Office aus zwischen 1 und {len(path_files_offices)}!')
+                if self.button_left == 1 and len(path_files_offices) >= 1:
+                    new_office_path = os.path.join(path_files_path,'office_1')
+                    self.working_office = new_office_path
+                    self.substate = 0
+                    self.state = 1
+                elif self.button_up == 1 and len(path_files_offices) >= 2:
+                    new_office_path = os.path.join(path_files_path,'office_2')
+                    self.working_office = new_office_path
+                    self.substate = 0
+                    self.state = 1
+                elif self.button_right == 1 and len(path_files_offices) >= 3:
+                    new_office_path = os.path.join(path_files_path,'office_3')
+                    self.working_office = new_office_path
+                    self.substate = 0
+                    self.state = 1
+        """   
         #----------------------------------------------------------------------------------------------
         if self.state == 1:
             # Substate 0: Switch to manual mode
@@ -153,7 +194,7 @@ class StateMachine(Node):
                 if self.response is not None:
                     self.service_called = False
                     if self.response.status.code == 0:
-                        self.get_logger().info(f'service called:Write State successfully! {self.response.status.message}')
+                        self.get_logger().info(f'service called successfully! {self.response.status.message}')
                         self.response = None
                         self.substate = 3 if not self.teach else 4
                     else:
@@ -170,7 +211,7 @@ class StateMachine(Node):
                         self.service_called = False
                         if self.response.start_node_saved:
                             self.teach = True
-                            self.get_logger().info('--- start teach: start node saved successfully')
+                            self.get_logger().info('start node saved successfully')
                         else:
                             self.get_logger().error('service call failed!')
                         self.response = None
@@ -186,13 +227,13 @@ class StateMachine(Node):
                     if self.response is not None:
                         self.service_called = False
                         if "False" not in self.response.csv_path:
-                            self.get_logger().info('--- end teach: end node saved successfully')
+                            self.get_logger().info('start node saved successfully')
                             self.current_csv_file = self.response.csv_path
                             self.current_traj_num = self.response.traj_num
                             self.start_end_nodes[self.response.traj_num] = [self.response.start_node, self.response.final_node]
                             self.teach = False
                         else:
-                            self.get_logger().error('--- end teach: service call failed!')
+                            self.get_logger().error('service call failed!')
                         self.response = None
                         self.substate = 5
 
@@ -252,19 +293,9 @@ class StateMachine(Node):
                                 self.state = 1
                                 self.substate = 0
                         else:
-                            self.get_logger().warning('no marker seen recently, return anyway')
                             # Marker outdated, abort
-                            if self.backwards == True:
-                                self.get_logger().warning('Homing Without Marker')
-                                self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
-                                self.substate = 2
-                            elif self.backwards == False:
-                                self.get_logger().warning('Repeat Path 1 without Marker')
-                                self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
-                                self.substate = 2
-                            else:
-                                self.state = 1
-                                self.substate = 0
+                            self.state = 1
+                            self.substate = 0
         
                     elif self.response.changed == True and self.canceled == True:
                         # If canceled by user (button E), behave similarly, but retain cancellation flag
@@ -315,8 +346,6 @@ class StateMachine(Node):
                 # Substate 2: Start following the selected trajectory
                 self.request_FollowPath.traj_file = self.current_csv_file
                 self.request_FollowPath.backwards = self.backwards
-                print(f'Following trajectory: {self.current_csv_file}')
-                print(f'Backwards: {self.backwards}')
         
                 if self.service_called == False:
                     self.call_service(self.client_FollowPath, self.request_FollowPath)

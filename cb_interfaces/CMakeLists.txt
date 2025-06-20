@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(carrierbot_interfaces)
+project(cb_interfaces)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -19,7 +19,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(carrierbot_interfaces
+rosidl_generate_interfaces(cb_interfaces
   "msg/SideButtons.msg"
   "msg/MainButtons.msg"
   "msg/Joystick.msg"
