@@ -1,12 +1,12 @@
 import rclpy
 from rclpy.node import Node
-from cb_interfaces.srv import ShowLED
+from cb_interfaces.srv import ShowLed
 from LEDControl import LEDControl  # Make sure this points to your LEDControl class
 
 class LEDServiceNode(Node):
     def __init__(self):
         super().__init__('led_service_node')
-        self.srv = self.create_service(ShowLED, 'show_led', self.handle_led_request)
+        self.srv = self.create_service(ShowLed, 'show_led', self.handle_led_request)
         self.led = LEDControl('/dev/spidev0.0', 8)
         self.get_logger().info("LED Service Node ready. Waiting for requests...")
 

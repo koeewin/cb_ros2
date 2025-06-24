@@ -32,6 +32,7 @@ rosidl_generate_interfaces(cb_interfaces
   "srv/TurnAround.srv"
   "srv/OdomOffset.srv"
   "srv/ChangeCtrlmode.srv"
+  "srv/ShowLed.srv"
 )
 
 ament_export_dependencies(rosidl_default_runtime)

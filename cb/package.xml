@@ -4,7 +4,7 @@
   <name>cb</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="henrik@todo.todo">henrik</maintainer>
+  <maintainer email="dingzhi.zhang@tum.de">Zhang</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>rclpy</depend>
