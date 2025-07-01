@@ -6,17 +6,17 @@ def generate_launch_description():
     return LaunchDescription([
 
         Node(
-            package="carrierbot",
+            package="cb",
             executable="current_image",
         ),
        
         Node(
-            package="carrierbot",
+            package="cb",
             executable="current_AprilTag",
         ),
 
         Node(
-            package="carrierbot",
+            package="cb",
             executable="serial_reader",
         ),
     
