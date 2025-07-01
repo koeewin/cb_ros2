@@ -3,7 +3,7 @@ from rclpy.node import Node
 from cb_interfaces.msg import Flags
 from sensor_msgs.msg import Joy
 from cartographer_ros_msgs.srv import WriteState
-from cb_interfaces.srv import EndPath, StartPath, RewritePath, FollowPath, ChangeCtrlmode
+from cb_interfaces.srv import EndPath, StartPath, RewritePath, FollowPath, ChangeCtrlmode,ShowLed
 from ament_index_python.packages import get_package_prefix
 from visualization_msgs.msg import Marker
 import os
@@ -96,13 +96,20 @@ class StateMachine(Node):
             self.get_logger().info('service ChangeCtrlmode not available, waiting...')
         self.request_ChangeCtrlmode = ChangeCtrlmode.Request()
 
+        ## ------ LED Control Client -----#
+
+        self.client_ShowLed = self.create_client(ShowLed, '/show_led')
+        # while not self.client_ChangeCtrlmode.wait_for_service(timeout_sec=1.0):
+        #     self.get_logger().info('service ChangeCtrlmode not available, waiting...')
+        self.request_ShowLed = ShowLed.Request()
+
         # Start the state machine loop
         self.state_machine_timer = self.create_timer(0.05, self.state_machine)
 
     def state_machine(self):
         # Uncomment for debugging
-        # print(f'state: {self.state}')
-        # print(f'substate: {self.substate}')
+        #print(f'state: {self.state}')
+        #print(f'substate: {self.substate}')
         #----------------------------------------------------------------------------------------------
         if self.state == 1:
             # Substate 0: Switch to manual mode
@@ -112,10 +119,14 @@ class StateMachine(Node):
                 self.request_ChangeCtrlmode.repeat = False
                 if not self.service_called:
                     self.call_service(self.client_ChangeCtrlmode, self.request_ChangeCtrlmode)
+                    self.get_logger().warning(f"SERVICE CALLED: Change Ctrlmode to Manual")
                     self.service_called = True
                 if self.response is not None:
                     self.service_called = False
                     if self.response.changed:
+                        self.get_logger().warning(f"STATE CHANGE SUCCESSFUL: Ctrlmode is Manual")
+                        self.request_ShowLed.mode = 0
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         self.response = None
                         self.follow = False
                         self.substate = 5
@@ -127,10 +138,14 @@ class StateMachine(Node):
                 self.request_ChangeCtrlmode.repeat = False
                 if not self.service_called:
                     self.call_service(self.client_ChangeCtrlmode, self.request_ChangeCtrlmode)
+                    self.get_logger().warning(f"SERVICE CALLED: Change Ctrlmode to Follow")
                     self.service_called = True
                 if self.response is not None:
                     self.service_called = False
                     if self.response.changed:
+                        self.get_logger().warning(f"STATE CHANGE SUCCESSFUL: Ctrlmode is Follow")
+                        self.request_ShowLed.mode = 1
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         self.response = None
                         self.follow = True
                         self.substate = 5
@@ -153,7 +168,7 @@ class StateMachine(Node):
                 if self.response is not None:
                     self.service_called = False
                     if self.response.status.code == 0:
-                        self.get_logger().info(f'service called:Write State successfully! {self.response.status.message}')
+                        self.get_logger().warning(f'SERVICE CALLED: Write Cartographer State successfully! {self.response.status.message}')
                         self.response = None
                         self.substate = 3 if not self.teach else 4
                     else:
@@ -170,7 +185,9 @@ class StateMachine(Node):
                         self.service_called = False
                         if self.response.start_node_saved:
                             self.teach = True
-                            self.get_logger().info('--- start teach: start node saved successfully')
+                            self.get_logger().info('STATE CHANGE SUCCESSFUL: Teach-In ... Recording Path ...')
+                            self.request_ShowLed.mode = 2
+                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         else:
                             self.get_logger().error('service call failed!')
                         self.response = None
@@ -186,7 +203,9 @@ class StateMachine(Node):
                     if self.response is not None:
                         self.service_called = False
                         if "False" not in self.response.csv_path:
-                            self.get_logger().info('--- end teach: end node saved successfully')
+                            self.get_logger().info('STATE CHANGE SUCCESSFUL: Teach-In Finished ... Saving Path Done...')
+                            self.request_ShowLed.mode = 4
+                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                             self.current_csv_file = self.response.csv_path
                             self.current_traj_num = self.response.traj_num
                             self.start_end_nodes[self.response.traj_num] = [self.response.start_node, self.response.final_node]
@@ -201,7 +220,7 @@ class StateMachine(Node):
                 files = os.listdir(self.working_office)
                 csv_files = [f for f in files if "trajectory" in f]
 
-                if self.button_e == 1:
+                if self.button_e == 1:  # change to follow mode 
                     self.substate = 1 if not self.follow else 0
                 elif self.button_left == 1:
                     self.canceled = False
@@ -212,7 +231,7 @@ class StateMachine(Node):
                     self.teach = False
                     self.substate = 0
                     self.state = 2
-                elif self.button_right == 1:
+                elif self.button_right == 1:    # change to repeat mode "REPEAT"
                     self.backwards = False
                     self.follow = False
                     self.teach = False
@@ -230,15 +249,16 @@ class StateMachine(Node):
                 if self.service_called == False:
                     # Call the service to change control mode to repeat
                     self.call_service(self.client_ChangeCtrlmode, self.request_ChangeCtrlmode)
+                    self.get_logger().warning(f"SERVICE CALLED: Change Ctrlmode to REPEAT")
                     self.service_called = True
         
                 if self.response != None:
                     self.service_called = False
-                    
+                    self.get_logger().warning('STATE CHANGE SUCCESSFUL: Autonomous Starting')
                     if self.response.changed == True and self.canceled == False:
                         # If mode change succeeded and not canceled, check marker conditions
                         self.response = None
-                        if self.get_clock().now().to_msg().sec - self.marker_timestamp < 3:
+                        if self.get_clock().now().to_msg().sec - self.marker_timestamp < 3: # If AprilTag Available
                             # Marker was recently seen
                             if self.marker_ID == 0 and self.backwards == False:
                                 # Enter selection mode for trajectory
@@ -251,15 +271,18 @@ class StateMachine(Node):
                                 # Return to state 1
                                 self.state = 1
                                 self.substate = 0
-                        else:
-                            self.get_logger().warning('no marker seen recently, return anyway')
+                        else:       # If No AprilTag is available
+                            self.get_logger().warning('Autonomous Starting: no marker seen recently, start anyway')
+                            ##--LED Control--##
+                            self.request_ShowLed.mode = 6
+                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                             # Marker outdated, abort
                             if self.backwards == True:
-                                self.get_logger().warning('Homing Without Marker')
+                                self.get_logger().warning('Autonomous Starting: Homing Without Marker')
                                 self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
                                 self.substate = 2
                             elif self.backwards == False:
-                                self.get_logger().warning('Repeat Path 1 without Marker')
+                                self.get_logger().warning('Autonomous Starting: Repeat Path 1 without Marker')
                                 self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
                                 self.substate = 2
                             else:
@@ -292,20 +315,29 @@ class StateMachine(Node):
                         csv_files.append(file)
         
                 if len(csv_files):
-                    self.get_logger().info(f'Waehle eine Trajectory aus zwischen 1 und {len(csv_files)}!')
+                    self.get_logger().warning(f'Waehle eine Trajectory aus zwischen 1 und {len(csv_files)}!')
                     # Select based on button pressed
                     if self.button_left == 1 and len(csv_files) >= 1:
                         self.current_traj_num = 1
                         self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
                         self.substate = 2
+                        ##--LED Control--##
+                        self.request_ShowLed.mode = 6
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                     elif self.button_up == 1 and len(csv_files) >= 2:
                         self.current_traj_num = 2
                         self.current_csv_file = os.path.join(self.working_office, f'trajectory_2.csv')
                         self.substate = 2
+                        ##--LED Control--##
+                        self.request_ShowLed.mode = 7
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                     elif self.button_right == 1 and len(csv_files) >= 3:
                         self.current_traj_num = 3
                         self.current_csv_file = os.path.join(self.working_office, f'trajectory_3.csv')
                         self.substate = 2
+                        ##--LED Control--##
+                        self.request_ShowLed.mode = 8
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                 else:
                     # No trajectory files found, go back to state 1
                     self.substate = 0
@@ -315,8 +347,8 @@ class StateMachine(Node):
                 # Substate 2: Start following the selected trajectory
                 self.request_FollowPath.traj_file = self.current_csv_file
                 self.request_FollowPath.backwards = self.backwards
-                print(f'Following trajectory: {self.current_csv_file}')
-                print(f'Backwards: {self.backwards}')
+                print(f'---------- Following trajectory: {self.current_csv_file}')
+                print(f'---------- Backwards: {self.backwards}')
         
                 if self.service_called == False:
                     self.call_service(self.client_FollowPath, self.request_FollowPath)
@@ -376,6 +408,7 @@ class StateMachine(Node):
                     self.service_called = False
                     if self.response.status.code == 0:
                         self.get_logger().info(f'service called successfully! {self.response.status.message}')
+                        self.get_logger().warning(f'SERVICE CALLED: Write Cartographer State successfully! {self.response.status.message}')
                         self.substate = 5
                         self.response = None
                     else:
@@ -401,11 +434,11 @@ class StateMachine(Node):
                         self.state = 1
                         self.response = None
 
-    def call_service(self, client, request):
+    def call_service(self, client, request, check_response: bool = True):
         # call service
         self.future = client.call_async(request)
-               
-        self.future.add_done_callback(self.service_callback)
+        if check_response:       
+            self.future.add_done_callback(self.service_callback)
     
     def service_callback(self, future):
         # check response
