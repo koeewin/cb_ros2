@@ -8,7 +8,7 @@ import os
 
 def generate_launch_description():
 
-    carrierbot_prefix = get_package_share_directory('carrierbot')
+    carrierbot_prefix = get_package_share_directory('cb')
     rplidar_prefix = get_package_share_directory('rplidar_ros')
 
     cartographer_launch_file = os.path.join(carrierbot_prefix, 'launch', 'CBcartographer.launch.py')
@@ -61,33 +61,33 @@ def generate_launch_description():
         ),        
 
         Node(
-            package="carrierbot",
+            package="cb",
             executable="diablo_odometry",
         ),
        
         Node(
-            package="carrierbot",
+            package="cb",
             executable="motionctrl_diablo",
         ),
 
         Node(
-            package="carrierbot",
+            package="cb",
             executable="current_pose",
         ),
         
         Node(
-            package="carrierbot",
+            package="cb",
             executable="pp_control",
         ),
         
         Node(
-            package="carrierbot",
+            package="cb",
             executable="current_path_sim",
         ),
 
 
         Node(
-            package="carrierbot",
+            package="cb",
             executable="state_machine_sim",
         ),
 
