@@ -77,7 +77,7 @@ def generate_launch_description():
         
         Node(
             package="carrierbot",
-            executable="pp_control",
+            executable="pp_control_adaptive",
         ),
         
         Node(

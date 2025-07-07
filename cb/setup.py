@@ -40,7 +40,8 @@ setup(
             "state_machine_sim = cb.state_machine_sim:main",
             "serial_reader = cb.get_Sensors:main",
             "tracker_pose = cb.get_Tracker:main",
-            "panel_sim = cb.get_Panel_sim:main"
+            "panel_sim = cb.get_Panel_sim:main",
+            "pp_control_adaptive = cb.PP_Controller_adaptive:main"
         ],
     },
 )

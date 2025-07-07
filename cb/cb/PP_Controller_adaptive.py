@@ -25,7 +25,7 @@ import time
 
 class PPcontroller(Node):
     def __init__(self):
-        super().__init__('pp_control')
+        super().__init__('pp_control_adaptive')
 
         # Subscriber for flags 
         self.Flags_sub = self.create_subscription(Flags, 'cb/Flags', self.listener_callback_flags, 10)
