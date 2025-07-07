@@ -55,10 +55,10 @@ def generate_launch_description():
             arguments=['-0.126', '0.0', '0.665', '0.0', '0.0', '0.0', '1.0', 'base_link', 'tracker']
         ),
             
-        Node(
-            package="diablo_ctrl",
-            executable="diablo_ctrl_node",
-        ),        
+       # Node(
+       #     package="diablo_ctrl",
+       #     executable="diablo_ctrl_node",
+       # ),        
 
         Node(
             package="cb",
@@ -77,7 +77,7 @@ def generate_launch_description():
         
         Node(
             package="cb",
-            executable="pp_control",
+            executable="pp_control_adaptive",
         ),
         
         Node(

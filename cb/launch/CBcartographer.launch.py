@@ -30,7 +30,7 @@ from launch.launch_context import LaunchContext
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-    carrierbot_prefix = get_package_share_directory('carrierbot')
+    carrierbot_prefix = get_package_share_directory('cb')
     cartographer_config_dir = LaunchConfiguration('cartographer_config_dir', default=os.path.join(
                                                   carrierbot_prefix, 'config'))
     configuration_basename = LaunchConfiguration('configuration_basename',

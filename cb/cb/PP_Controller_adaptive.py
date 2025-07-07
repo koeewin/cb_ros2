@@ -274,16 +274,16 @@ class PPcontroller(Node):
 
 
     def ppcontroller(self,taught_path,x,y,teta):
-        Lf = 0.6#1.5 # look ahead distance (meters)
-        Lf_start = 0.6#1.5 # look ahead distance for start (meters)
+        Lf = 1.0#1.5 # look ahead distance (meters)
+        Lf_start = 1.0#1.5 # look ahead distance for start (meters)
         Vc = 1.0; # desired velocity in [m/s]
         end_dist = 0.3 # Min distance between current Pose and last Node
         end_dist_location = 30 # Min number of nodes between current Pose and last Node
         max_node_skip = 50 # Max number of nodes, we can look further ahead
         turn_tol = 0.3 # tollerance for turning
-        accel_distance = 100#200 # distance robot will be accelerating or breaking (number of nodes)
+        accel_distance = 200 # distance robot will be accelerating or breaking (number of nodes)
         wRef = 0.0 # default value
-        accel_distance_meter = 1.0#5.0 # distance vor robot to accelerate or brake (meters)
+        accel_distance_meter = 5.0#5.0 # distance vor robot to accelerate or brake (meters)
         
         
 
@@ -378,7 +378,7 @@ class PPcontroller(Node):
             # calculate the Curvature
             k = next_node_transformed.position.y / Ld**2
 
-            r_min = 3  # Minimum radius of curvature
+            r_min = 3.60  # Minimum radius of curvature
             if abs(k) > 1/r_min:
                 
                 Vc =  Vc/(r_min*abs(k))  # Limit speed if curvature is too high
@@ -387,13 +387,13 @@ class PPcontroller(Node):
             #self.get_logger().warning(f'Current Curvature k is : {k}')
             
             #Apply Curvature base Velocity Adjustmen
-            self.dynamic_Lf = Vc * 1
+            self.dynamic_Lf = Vc * 2
          
             
             # Calculate angular velocity using pure pursuit formula: w = 2*v*y / Ld^2
             wRef = 2 * Vc * next_node_transformed.position.y / Ld**2
             vRef = Vc  # Set linear velocity to desired speed
-            self.get_logger().warning(f'--- vRef = {round(vRef,2)}, Kruemmung = {round(k,2)}, Vc = {round(Vc,2)}, wRef = {round(wRef,2)},--- Dy. Lf = {round(self.dynamic_Lf,2)} , Ld_end = {round(Ld_end,2)}, Ld_end_location = {round(Ld_end_location,2)} ---')
+            self.get_logger().warning(f'--- vRef = {round(vRef,2)}, Kruemmung = {round(k,2)}, Vc = {round(Vc,2)}, wRef = {round(wRef,2)},--- Dy. Lf = {round(self.dynamic_Lf,2)}---') #, Ld_end = {round(Ld_end,2)}, Ld_end_location = {round(Ld_end_location,2)} ---')
         
         # Check if robot has arrived at the goal location based on distance thresholds
         if Ld_end < end_dist and Ld_end_location < end_dist_location and self.arrived == False:
