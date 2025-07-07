@@ -35,7 +35,7 @@ SP_TOP_BOT = 19
 class UWBSerialReader(Node):
     def __init__(self):
         super().__init__('uwb_serial_reader')
-        self.declare_parameter('serial_port', '/dev/ttyACM0') # Raspberry Pi5 Uart-Connector mini-jst /dev/ttyAMA10
+        self.declare_parameter('serial_port', '/dev/ttyAMA10') # Raspberry Pi5 Uart-Connector mini-jst /dev/ttyAMA10
         self.serial_port = self.get_parameter('serial_port').get_parameter_value().string_value
         self.baud_rate = 250000
 
