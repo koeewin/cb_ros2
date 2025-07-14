@@ -1,0 +1,5 @@
+bool manuel
+bool follow
+bool repeat 
+---
+bool changed

@@ -1,0 +1,36 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/zhang/Desktop/carrierbot-BA_Sand/build/carrierbot",
+        "/home/zhang/Desktop/carrierbot-BA_Sand/install/carrierbot/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/carrierbot-BA_Sand/install/carrierbot_interfaces/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_teleop/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/motion_msgs/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_simulation/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/ception_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/imu_decoder_subscriber/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/diablo_teleop/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/motion_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/learning_topic/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/ception_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/Remote/lib/python3.8/site-packages",
+        "/opt/ros/foxy/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/pbstream_install/cartographer-read-pbstream/src"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/zhang/Desktop/carrierbot-BA_Sand/build/carrierbot",
+        "/home/zhang/Desktop/carrierbot-BA_Sand/install/carrierbot/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/carrierbot-BA_Sand/install/carrierbot_interfaces/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_teleop/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/motion_msgs/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_simulation/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/diablo_ws/install/ception_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/imu_decoder_subscriber/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/diablo_teleop/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/motion_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/learning_topic/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/ception_msgs/lib/python3.8/site-packages",
+        "/home/zhang/diablo_ws/install/Remote/lib/python3.8/site-packages",
+        "/opt/ros/foxy/lib/python3.8/site-packages",
+        "/home/zhang/Desktop/pbstream_install/cartographer-read-pbstream/src"
+    ]
+}

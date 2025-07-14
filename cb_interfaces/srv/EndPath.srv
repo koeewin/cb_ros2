@@ -1,6 +1,0 @@
-string pbstream_path
----
-int32 start_node
-int32 final_node
-int32 traj_num
-string csv_path

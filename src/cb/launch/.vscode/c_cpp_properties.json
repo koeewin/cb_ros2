@@ -1,0 +1,32 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/zhang/Desktop/carrierbot-BA_Sand/install/carrierbot_interfaces/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_simpose_trans/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_ctrl/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_body/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/diablo_utils/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/motion_msgs/include/**",
+        "/home/zhang/Desktop/diablo_ws/install/ception_msgs/include/**",
+        "/home/zhang/diablo_ws/install/diablo_ctrl/include/**",
+        "/home/zhang/diablo_ws/install/diablo_body/include/**",
+        "/home/zhang/diablo_ws/install/diablo_utils/include/**",
+        "/home/zhang/diablo_ws/install/motion_msgs/include/**",
+        "/home/zhang/diablo_ws/install/ception_msgs/include/**",
+        "/opt/ros/foxy/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
