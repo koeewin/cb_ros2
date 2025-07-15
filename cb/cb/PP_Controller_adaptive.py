@@ -281,9 +281,9 @@ class PPcontroller(Node):
         end_dist_location = 30 # Min number of nodes between current Pose and last Node
         max_node_skip = 50 # Max number of nodes, we can look further ahead
         turn_tol = 0.3 # tollerance for turning
-        accel_distance = 200 # distance robot will be accelerating or breaking (number of nodes)
+        accel_distance = 150#200 # distance robot will be accelerating or breaking (number of nodes)
         wRef = 0.0 # default value
-        accel_distance_meter = 5.0#5.0 # distance vor robot to accelerate or brake (meters)
+        accel_distance_meter = 2.5#5.0 # distance vor robot to accelerate or brake (meters)
         
         
 
@@ -378,22 +378,22 @@ class PPcontroller(Node):
             # calculate the Curvature
             k = next_node_transformed.position.y / Ld**2
 
-            r_min = 3.60  # Minimum radius of curvature
+            r_min = 3.6  # Minimum radius of curvature
             if abs(k) > 1/r_min:
                 
                 Vc =  Vc/(r_min*abs(k))  # Limit speed if curvature is too high
             else:
                 Vc = Vc
             #self.get_logger().warning(f'Current Curvature k is : {k}')
-            
+            Vc = max(0.15, min(Vc, 1))  # Ensure speed is within limits 0.15 - 1
+
             #Apply Curvature base Velocity Adjustmen
-            self.dynamic_Lf = Vc * 2
-         
+            self.dynamic_Lf = max(0.2, min(Vc * 1.2, 1.2))  # Ensure Lf is within limits 0.15 - 1  
             
             # Calculate angular velocity using pure pursuit formula: w = 2*v*y / Ld^2
             wRef = 2 * Vc * next_node_transformed.position.y / Ld**2
             vRef = Vc  # Set linear velocity to desired speed
-            self.get_logger().warning(f'--- vRef = {round(vRef,2)}, Kruemmung = {round(k,2)}, Vc = {round(Vc,2)}, wRef = {round(wRef,2)},--- Dy. Lf = {round(self.dynamic_Lf,2)}---') #, Ld_end = {round(Ld_end,2)}, Ld_end_location = {round(Ld_end_location,2)} ---')
+            self.get_logger().warning(f'--- vRef = {round(vRef,2)}, Kr = {round(k,2)}, wRef = {round(wRef,2)},--- Dy.Lf = {round(self.dynamic_Lf,2)}---') #, Ld_end = {round(Ld_end,2)}, Ld_end_location = {round(Ld_end_location,2)} ---')
         
         # Check if robot has arrived at the goal location based on distance thresholds
         if Ld_end < end_dist and Ld_end_location < end_dist_location and self.arrived == False:

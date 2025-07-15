@@ -108,8 +108,8 @@ class StateMachine(Node):
 
     def state_machine(self):
         # Uncomment for debugging
-        #print(f'state: {self.state}')
-        #print(f'substate: {self.substate}')
+        print(f'state: {self.state}')
+        print(f'substate: {self.substate}')
         #----------------------------------------------------------------------------------------------
         if self.state == 1:
             # Substate 0: Switch to manual mode
@@ -205,11 +205,12 @@ class StateMachine(Node):
                         if "False" not in self.response.csv_path:
                             self.get_logger().info('STATE CHANGE SUCCESSFUL: Teach-In Finished ... Saving Path Done...')
                             self.request_ShowLed.mode = 4
-                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                            
                             self.current_csv_file = self.response.csv_path
                             self.current_traj_num = self.response.traj_num
                             self.start_end_nodes[self.response.traj_num] = [self.response.start_node, self.response.final_node]
                             self.teach = False
+                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         else:
                             self.get_logger().error('--- end teach: service call failed!')
                         self.response = None
@@ -245,6 +246,7 @@ class StateMachine(Node):
                 self.request_ChangeCtrlmode.manuel = False
                 self.request_ChangeCtrlmode.follow = False
                 self.request_ChangeCtrlmode.repeat = True
+                
         
                 if self.service_called == False:
                     # Call the service to change control mode to repeat
@@ -254,7 +256,7 @@ class StateMachine(Node):
         
                 if self.response != None:
                     self.service_called = False
-                    self.get_logger().warning('STATE CHANGE SUCCESSFUL: Autonomous Starting')
+                    self.get_logger().warning('STATE CHANGE SUCCESSFUL: Autonomous Starting!!!')
                     if self.response.changed == True and self.canceled == False:
                         # If mode change succeeded and not canceled, check marker conditions
                         self.response = None
@@ -291,6 +293,7 @@ class StateMachine(Node):
         
                     elif self.response.changed == True and self.canceled == True:
                         # If canceled by user (button E), behave similarly, but retain cancellation flag
+                        self.get_logger().warning('the cancle was triggered?')
                         self.response = None
                         if self.get_clock().now().to_msg().sec - self.marker_timestamp < 3:
                             self.canceled = False

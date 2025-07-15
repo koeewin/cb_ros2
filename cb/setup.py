@@ -32,6 +32,7 @@ setup(
             "current_path = cb.get_Path:main",
             "current_path_sim = cb.get_Path_sim:main",
             "pp_control = cb.PP_Controller:main",
+            "pp_control_adaptive = cb.PP_Controller_adaptive:main",
             "motionctrl_diablo = cb.Motion_Ctrl_diablo:main",
             "motionctrl_sim = cb.Motion_Ctrl_sim:main",
             "current_image = cb.get_Image:main",
@@ -41,7 +42,8 @@ setup(
             "serial_reader = cb.get_Sensors:main",
             "tracker_pose = cb.get_Tracker:main",
             "panel_sim = cb.get_Panel_sim:main",
-            "pp_control_adaptive = cb.PP_Controller_adaptive:main"
+            "led_service_node = cb.show_Led:main"
+            
         ],
     },
 )

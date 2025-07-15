@@ -19,5 +19,12 @@ def generate_launch_description():
             package="cb",
             executable="serial_reader",
         ),
+        
+        Node(
+            package="cb",
+            executable="led_service_node",
+        ),
+        
+
     
     ])
