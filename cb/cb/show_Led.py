@@ -13,18 +13,20 @@ class LEDServiceNode(Node):
     def handle_led_request(self, request, response):
         mode = request.mode
         self.get_logger().info(f"Received LED mode request: {mode}")
+        # --------- upper two LEDs -------#
         # Mode 0: Manual    Green   ID:0,1
         # Mode 1: Follow    Blue    ID:0,1
-        # Mode 2: TeachPath [100, 100, 0]   ID:3,4,5,6  2Hz
-        # Mode 9: Home/Auto [120 80 20]     Blue    ID:0,1  2Hz
-        # Mode 10: Repeat/Auto [0,120,120]    ID:0,1 2Hz
-        
-        # Mode 3: Home      [0,100,0]    ID:3,4,5,6  2Hz   
-        # Mode 4: PathSaved Green   ID:3,4,5,6  1Hz
-        # Mode 5: SelectPath Blue   ID:2,3,4,5,6,7 1Hz
-        # Mode 6: #1Selected Blue   ID:2,3 2Hz
-        # Mode 7: #2Selected Blue   ID:4,5 2Hz
-        # Mode 8: #3Selected Blue   ID:6,7 2Hz
+        # Mode 2: Autonom   Red     ID:0,1  
+
+        # --------- lower six LEDs -------#
+        # Mode 3:  TeachPath  [100, 100, 0]  ID:2,3,4,5,6,7  2Hz
+        # Mode 4:  PathSaved  [100, 100, 0]  ID:2,3,4,5,6,7
+
+        # Mode 5:  PathSelect [100, 50, 0]   ID:2,3,4,5,6,7  2Hz
+        # Mode 6:  #1Selected [100, 50, 0]   ID:2,3 2Hz
+        # Mode 7:  #2Selected [100, 50, 0]   ID:4,5 2Hz
+        # Mode 8:  #3Selected [100, 50, 0]   ID:6,7 2Hz
+        # Mode 9:  #Homing    [100,100,100]  ID:2,3,4,5,6,7 2Hz
         
 
 
@@ -46,71 +48,63 @@ class LEDServiceNode(Node):
                 self.led.fill_selected( [0,1], 0, 0, 125)
                 response.result = 0
                 response.success = True
-
-            elif mode == 2:
-                #Mode 2: TeachPath Yellow blink 2Hz
-                #self.led.fill(0, 0, 0)
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([0,1], frequency=2, color=[100, 100, 0], duration=None)
-                response.result = 1
-                response.success = True
-
-            elif mode == 3: # Mode 3: Home Path     Blue    ID:3,4,5,6  2Hz
-                #self.led.fill(0, 0, 0)
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.fill_selected( [0,1],100, 100, 0)
-                self.led.blink([3,4,5,6], frequency=1, color=[0, 0, 125], duration=None)
-                response.result = 1
-                response.success = True
-            elif mode == 4: # Mode 4: PathSaved Green   ID:3,4,5,6  1Hz
-                #self.led.fill(0, 0, 0)
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([3,4,5,6], frequency=1, color=[0, 100, 0], duration=None)
-                response.result = 1
-                response.success = True
-
-            elif mode == 5: #SelectPath Blue   ID:2,3,4,5,6,7 1Hz 
-                #self.led.fill(0, 0, 0)
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([2,3,4,5,6,7], frequency=1, color=[0, 0, 125], duration=None)
-                response.result = 1
-                response.success = True
-
-            elif mode == 6:  # Mode 6: #1Selected Blue   ID:2,3 2Hz
-                
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([2,3], frequency=2, color=[0, 0, 150], duration=None)
-                response.result = 1
-                response.success = True
-            elif mode == 7:  # Mode 7: #2Selected Blue   ID:4,5 2Hz
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([4,5], frequency=2, color=[0, 0, 150], duration=None)
-                response.result = 1
-                response.success = True
-            elif mode == 8:  # Mode 8: #3Selected Blue   ID:6,7 2Hz
-                self.led.stop_blink()
-                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([6,7], frequency=2, color=[0, 0, 150], duration=None)
-                response.result = 1
-                response.success = True
-            elif mode == 9:  # Mode 9: Home/Auto [120, 80, 20] Blue ID:3,4,5,6 2Hz
+            
+            elif mode == 2:  # Mode 2: Autonom   Red     ID:0,1
                 self.led.stop_blink()
                 self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
                 self.led.blink([0,1], frequency=2, color=[120, 80, 20], duration=None)
                 response.result = 1
                 response.success = True
-            elif mode == 10:  # Mode 10: Repeat/Auto [0,120,120]    ID:0,1 2Hz
-                self.led.stop_blink()
+
+            elif mode == 3:    # Mode 3:  TeachPath  [100, 100, 0]  ID:2,3,4,5,6,7  2Hz
                 self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([0,1], frequency=2, color=[0, 120, 120], duration=None)
+                self.led.blink([2,3,4,5,6,7], frequency=1, color=[100, 100, 0], duration=None)
                 response.result = 1
                 response.success = True
+
+            elif mode == 4: # Mode 4:  PathSaved  [100, 100, 0]  ID:2,3,4,5,6,7
+                
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.fill_selected( [2,3,4,5,6,7], 100, 100, 0)
+                response.result = 1
+                response.success = True
+
+            elif mode == 5: # Mode 5:  PathSelect [100, 50, 0]   ID:2,3,4,5,6,7  2Hz
+                self.led.stop_blink()
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.blink([2,3,4,5,6,7], frequency=1, color=[100, 50, 0], duration=None)
+                response.result = 1
+                response.success = True
+            
+
+            elif mode == 6:  #1Selected [100, 50, 0]   ID:2,3 2Hz
+                #self.led.fill(0, 0, 0)
+                self.led.stop_blink()
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.blink([2,3], frequency=2, color=[100, 50, 0], duration=None)
+                response.result = 1
+                response.success = True
+
+            elif mode == 7:   #2Selected [100, 50, 0]   ID:4,5 2Hz
+                
+                self.led.stop_blink()
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.blink([4,5], frequency=2, color=[0, 0, 150], duration=None)
+                response.result = 1
+                response.success = True
+            elif mode == 8:  # Mode 8:  #3Selected [100, 50, 0]   ID:6,7 2Hz
+                self.led.stop_blink()
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.blink(6,7], frequency=2, color=[100, 50, 0], duration=None)
+                response.result = 1
+                response.success = True
+            elif mode == 9:   # Mode 9:  #Homing    [100,100,100]  ID:2,3,4,5,6,7 2Hz
+                self.led.stop_blink()
+                self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
+                self.led.blink([2,3,4,5,6,7], frequency=2, color=[100, 100, 100], duration=None)
+                response.result = 1
+                response.success = True
+
             else:
                 self.get_logger().warn(f"Unsupported mode: {mode}")
                 self.led.fill(0, 0, 0)
