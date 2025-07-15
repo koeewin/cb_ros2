@@ -186,7 +186,7 @@ class StateMachine(Node):
                         if self.response.start_node_saved:
                             self.teach = True
                             self.get_logger().info('STATE CHANGE SUCCESSFUL: Teach-In ... Recording Path ...')
-                            self.request_ShowLed.mode = 2
+                            self.request_ShowLed.mode = 3
                             self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         else:
                             self.get_logger().error('service call failed!')
@@ -276,7 +276,7 @@ class StateMachine(Node):
                         else:       # If No AprilTag is available
                             self.get_logger().warning('Autonomous Starting: no marker seen recently, start anyway')
                             ##--LED Control--##
-                            self.request_ShowLed.mode = 6
+                            self.request_ShowLed.mode = 2
                             self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                             # Marker outdated, abort
                             if self.backwards == True:
@@ -320,6 +320,8 @@ class StateMachine(Node):
                 if len(csv_files):
                     self.get_logger().warning(f'Waehle eine Trajectory aus zwischen 1 und {len(csv_files)}!')
                     # Select based on button pressed
+                    self.request_ShowLed.mode = 6
+                    self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                     if self.button_left == 1 and len(csv_files) >= 1:
                         self.current_traj_num = 1
                         self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
