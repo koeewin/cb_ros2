@@ -260,6 +260,9 @@ class StateMachine(Node):
                     if self.response.changed == True and self.canceled == False:
                         # If mode change succeeded and not canceled, check marker conditions
                         self.response = None
+                        self.get_logger().warning('Autonomous Starting: no marker seen recently, start anyway')
+                        self.request_ShowLed.mode = 2
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                         if self.get_clock().now().to_msg().sec - self.marker_timestamp < 3: # If AprilTag Available
                             # Marker was recently seen
                             if self.marker_ID == 0 and self.backwards == False:
@@ -276,8 +279,6 @@ class StateMachine(Node):
                         else:       # If No AprilTag is available
                             self.get_logger().warning('Autonomous Starting: no marker seen recently, start anyway')
                             ##--LED Control--##
-                            self.request_ShowLed.mode = 2
-                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                             # Marker outdated, abort
                             if self.backwards == True:
                                 self.get_logger().warning('Autonomous Starting: Homing Without Marker')
@@ -286,7 +287,7 @@ class StateMachine(Node):
                             elif self.backwards == False:
                                 self.get_logger().warning('Autonomous Starting: Repeat Path 1 without Marker')
                                 self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
-                                self.substate = 2
+                                self.substate = 1
                             else:
                                 self.state = 1
                                 self.substate = 0
@@ -320,7 +321,7 @@ class StateMachine(Node):
                 if len(csv_files):
                     self.get_logger().warning(f'Waehle eine Trajectory aus zwischen 1 und {len(csv_files)}!')
                     # Select based on button pressed
-                    self.request_ShowLed.mode = 6
+                    self.request_ShowLed.mode = 5
                     self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
                     if self.button_left == 1 and len(csv_files) >= 1:
                         self.current_traj_num = 1
@@ -354,6 +355,9 @@ class StateMachine(Node):
                 self.request_FollowPath.backwards = self.backwards
                 print(f'---------- Following trajectory: {self.current_csv_file}')
                 print(f'---------- Backwards: {self.backwards}')
+                if self.backwards:
+                    self.request_ShowLed.mode = 9
+                    self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
         
                 if self.service_called == False:
                     self.call_service(self.client_FollowPath, self.request_FollowPath)

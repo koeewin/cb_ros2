@@ -52,7 +52,7 @@ class LEDServiceNode(Node):
             elif mode == 2:  # Mode 2: Autonom   Red     ID:0,1
                 self.led.stop_blink()
                 self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink([0,1], frequency=2, color=[120, 80, 20], duration=None)
+                self.led.fill_selected( [0,1], 100, 0, 0)
                 response.result = 1
                 response.success = True
 
@@ -63,7 +63,7 @@ class LEDServiceNode(Node):
                 response.success = True
 
             elif mode == 4: # Mode 4:  PathSaved  [100, 100, 0]  ID:2,3,4,5,6,7
-                
+                self.led.stop_blink()
                 self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
                 self.led.fill_selected( [2,3,4,5,6,7], 100, 100, 0)
                 response.result = 1
