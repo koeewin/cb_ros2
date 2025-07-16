@@ -317,33 +317,52 @@ class StateMachine(Node):
                 for file in files:
                     if "trajectory" in file:
                         csv_files.append(file)
-        
                 if len(csv_files):
                     self.get_logger().warning(f'Waehle eine Trajectory aus zwischen 1 und {len(csv_files)}!')
                     # Select based on button pressed
-                    self.request_ShowLed.mode = 5
-                    self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                    if self.service_called == False:
+                        self.request_ShowLed.mode = 5
+                        self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                        self.service_called = True
+                        
+                    
                     if self.button_left == 1 and len(csv_files) >= 1:
-                        self.current_traj_num = 1
-                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
-                        self.substate = 2
-                        ##--LED Control--##
+                         ##--LED Control--##
+                        self.get_logger().warning(f'!!!!!!Path 1 is now selected!!!!!!')
                         self.request_ShowLed.mode = 6
                         self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
-                    elif self.button_up == 1 and len(csv_files) >= 2:
-                        self.current_traj_num = 2
-                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_2.csv')
+                        self.current_traj_num = 1
+                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_1.csv')
+                        self.service_called = False
+                        self.response = None
                         self.substate = 2
+                        
+                       
+                         
+                    elif self.button_up == 1 and len(csv_files) >= 2:
                         ##--LED Control--##
                         self.request_ShowLed.mode = 7
                         self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
-                    elif self.button_right == 1 and len(csv_files) >= 3:
-                        self.current_traj_num = 3
-                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_3.csv')
+                        self.current_traj_num = 2
+                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_2.csv')
+                        self.service_called = False
+                        self.response = None
                         self.substate = 2
+                        
+                        
+                        
+                    elif self.button_right == 1 and len(csv_files) >= 3:
                         ##--LED Control--##
                         self.request_ShowLed.mode = 8
                         self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                        self.current_traj_num = 3
+                        self.current_csv_file = os.path.join(self.working_office, f'trajectory_3.csv')
+                        self.service_called = False
+                        self.response = None
+                        self.substate = 2
+                        
+                        
+                       
                 else:
                     # No trajectory files found, go back to state 1
                     self.substate = 0
@@ -354,10 +373,7 @@ class StateMachine(Node):
                 self.request_FollowPath.traj_file = self.current_csv_file
                 self.request_FollowPath.backwards = self.backwards
                 print(f'---------- Following trajectory: {self.current_csv_file}')
-                print(f'---------- Backwards: {self.backwards}')
-                if self.backwards:
-                    self.request_ShowLed.mode = 9
-                    self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                print(f'---------- Backwards: {self.backwards}')                    
         
                 if self.service_called == False:
                     self.call_service(self.client_FollowPath, self.request_FollowPath)
@@ -366,8 +382,13 @@ class StateMachine(Node):
                 if self.response != None:
                     self.service_called = False
                     if self.response.started == True:
+                        if self.backwards == True:
+                            self.request_ShowLed.mode = 9
+                            self.call_service(self.client_ShowLed, self.request_ShowLed, check_response=False)
+                        
                         self.response = None
                         self.substate = 3
+
                     elif self.response.started == False:
                         self.response = None
                         self.state = 1
@@ -375,6 +396,8 @@ class StateMachine(Node):
         
             elif self.substate == 3:
                 # Substate 3: Wait for trajectory to finish or get canceled
+                self.get_logger().warning(f'I am here substate 3')
+                self.get_logger().warning(f'self.homed: {self.homed}')
                 if self.button_e == 1:
                     # Cancel requested by user
                     self.canceled = True
@@ -390,6 +413,7 @@ class StateMachine(Node):
                     Flags_msg = Flags()
                     Flags_msg.homed = False
                     self.Flags_pub.publish(Flags_msg)
+                    self.get_logger().warning(f'!!!!!!!!!!Final Position REACHED!!!!!!!!!')
         
                     if self.current_traj_num in new_trajs and self.canceled == False:
                         self.substate = 4
