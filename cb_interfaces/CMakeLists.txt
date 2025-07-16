@@ -25,6 +25,7 @@ rosidl_generate_interfaces(cb_interfaces
   "msg/Joystick.msg"
   "msg/Panel.msg"
   "msg/Flags.msg"
+  "msg/PositioningData.msg"
   "srv/EndPath.srv"
   "srv/StartPath.srv"
   "srv/RewritePath.srv"
