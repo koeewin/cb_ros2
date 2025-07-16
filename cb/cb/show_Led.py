@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from cb_interfaces.srv import ShowLed
-from LEDControl import LEDControl  # Make sure this points to your LEDControl class
+from cb.LEDControl import LEDControl  # Make sure this points to your LEDControl class
 
 class LEDServiceNode(Node):
     def __init__(self):
@@ -95,7 +95,7 @@ class LEDServiceNode(Node):
             elif mode == 8:  # Mode 8:  #3Selected [100, 50, 0]   ID:6,7 2Hz
                 self.led.stop_blink()
                 self.get_logger().info(f"Previous Mode tured off and starting mode: {mode}")
-                self.led.blink(6,7], frequency=2, color=[100, 50, 0], duration=None)
+                self.led.blink([6,7], frequency=2, color=[100, 50, 0], duration=None)
                 response.result = 1
                 response.success = True
             elif mode == 9:   # Mode 9:  #Homing    [100,100,100]  ID:2,3,4,5,6,7 2Hz

@@ -1,6 +1,9 @@
 import time
 import threading
-from pi5neo import Pi5Neo
+import sys
+print("Python exe:", sys.executable)
+from cb.pi5neo import Pi5Neo
+
 
 class LEDControl:
     def __init__(self, device_path, led_count, spi_speed=800):
