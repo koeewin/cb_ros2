@@ -17,4 +17,4 @@ LABEL_PATH = os.path.join(BASE_PATH, "coral-models", "coco_labels.txt")
 ## This path should be updated according to the deployment system.
 #  All other relative paths throughout the vision pipeline are constructed based on this value."""
 # Base_path = "/home/cb/Desktop/human-position-publisher/positioning"
-Base_path = "/home/quan/cb_ros2/src/cb_positioning/cb_positioning/positioning_utils"
+Base_path = "/home/cb/Desktop/cb_workspace/src/cb_ros2/cb_positioning/cb_positioning/positioning_utils"

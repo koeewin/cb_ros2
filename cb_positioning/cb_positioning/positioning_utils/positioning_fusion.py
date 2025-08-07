@@ -89,8 +89,8 @@ class PositioningFusion(Positioning):
 
     def calculate_xy(self):
         """Converts polar coordinates (distance, angle) into Cartesian coordinates (x, y)."""
-        self._x = round(self._distance * math.cos(self._angle), 2)
-        self._y = round(self._distance * math.sin(self._angle), 2)
+        self._x = round(self._distance * math.cos(self._angle), 3)
+        self._y = round(self._distance * math.sin(self._angle), 3)
 
 
 

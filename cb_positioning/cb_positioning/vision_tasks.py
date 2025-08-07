@@ -84,14 +84,14 @@ class VisionTasks(Node):
         self.position_vision_pub = self.create_publisher(PositioningData, 'human/positionVision', 10)
 
         ## Publishes the AprilTag landmarks to the `/landmark` message topic.
-        self.landmark_pub = self.create_publisher(Marker, '/landmark', 2)       
+        #self.landmark_pub = self.create_publisher(Marker, '/landmark', 2)       
         ##  @}    
 
         ##  @name Broadcasters
         #   @{
 
         ## Broadcasts the pose of the robot
-        self.tf_broadcaster = TransformBroadcaster(self)
+        #self.tf_broadcaster = TransformBroadcaster(self)
         ##  @}    
         
         ##  @name Positioning modules
@@ -101,7 +101,7 @@ class VisionTasks(Node):
         self.positioningVisionHuman = PositioningVisionHuman(height_camera=CAMERA_HEIGHT)
 
         ## Positioning class for tracking the human AprilTag landmarks
-        self.positioningVisionAprilTag = PositioningVisionAprilTag()
+        #self.positioningVisionAprilTag = PositioningVisionAprilTag()
         ##  @}    
 
         ##  @name Camera Variables
@@ -201,8 +201,8 @@ class VisionTasks(Node):
         #  - Performs AprilTag detection and sets @ref apriltag_newframe_processed to True.
         #  - If an AprilTag is detected (i.e. @ref apriltag_detected = True), 
         #    publishes the AprilTag landmark to the `/landmark` message topic.
-        self.apriltag_thread = threading.Thread(target=self.apriltag_detection, args=())
-        self.apriltag_thread.start()
+        #self.apriltag_thread = threading.Thread(target=self.apriltag_detection, args=())
+        #self.apriltag_thread.start()
 
         ## Human detection thread
         #

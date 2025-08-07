@@ -6,6 +6,7 @@ import threading
 
 from geometry_msgs.msg import Point
 #from cb_interfaces.msg import Panel
+from cb_interfaces.msg import PositioningData
 from sensor_msgs.msg import Joy
 # Message constants
 MSG_CMD_SEND_HUMAN_POSITION = 0xAA
@@ -47,11 +48,11 @@ class UWBSerialReader(Node):
             raise e
 
         # Publishers
-        self.position_pub = self.create_publisher(Point, '/human/positionUWB', 10)
+        self.position_pub = self.create_publisher(PositioningData, '/human/positionUWB', 10)
         self.panel_pub = self.create_publisher(Joy, '/cb/Panel', 10)
 
         # Store latest values
-        self.latest_point = Point()
+        self.latest_point = PositioningData()
         self.latest_panel = Joy()
 
         # Timers
@@ -122,8 +123,13 @@ class UWBSerialReader(Node):
             y = ((message[SP_Y_HIGH_BYTE] << 8) | message[SP_Y_LOW_BYTE]) / 1000.0
 
             # Update latest_point
-            self.latest_point = Point(x=x, y=y, z=0.0)
-
+            #self.latest_point = Point(x=x, y=y, z=0.0)
+            #latest_point = PositioningData()
+            self.latest_point.x = float(y)
+            self.latest_point.y = float(-x)
+            self.latest_point.angle = float(angle)
+            self.latest_point.distance = float(distance)
+            
             # Update latest_panel
             self.latest_panel = Joy()
             self.latest_panel.axes = [
