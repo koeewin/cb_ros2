@@ -475,7 +475,7 @@ class PositioningVisionHuman(Positioning):
         #if show_ui:
         #    frameHuman = self.draw_tracks_on_frame(frame)
 
-        return self.human_detected
+        return self.human_detected, frameHuman
      
 
 def main():

@@ -48,7 +48,7 @@ except ImportError:
 ## The height of the camera measured from the ground
 CAMERA_HEIGHT = 0.52
 PITCH_REFERENCE = -0.032 #Rad    Just the Reading form ROS2 MSG
-ROLL_REFERENCE  = 0.0045 #Rad
+ROLL_REFERENCE  = 0.008 #Rad
 PITCH_CORRECTION = 0.095 #Rad
 ROLL_CORRECTION  = 0.005 #Rad
 
@@ -129,7 +129,8 @@ class VisionTasks(Node):
         self.capture = None
 
         ## Store the captured frame each update.
-        self.frame = None   
+        self.frame = None
+        self.frameHuman = None   
         ##  @}    
 
         ##  @name Boolean Flags
@@ -290,28 +291,28 @@ class VisionTasks(Node):
                     fps_str = 'fps:'+str(fps)
                 else:
                     fps_str = 'fps:0'+str(fps)
+                if self.frameHuman is not None:
+                    with self.lock:
+                        #frame = self.frame.copy()
+                        frame = self.frameHuman.copy()
+                    if self.human_detected:
+                        self.positioningVisionHuman.draw_tracks_on_frame(frame)
 
-                with self.lock:
-                    frame = self.frame.copy()                
+                    if self.apriltag_detected:
+                        self.positioningVisionAprilTag.draw_on_frame(frame, self.positioningVisionAprilTag.corners, self.positioningVisionAprilTag.ids)
 
-                if self.human_detected:
-                    self.positioningVisionHuman.draw_tracks_on_frame(frame)
-
-                if self.apriltag_detected:
-                    self.positioningVisionAprilTag.draw_on_frame(frame, self.positioningVisionAprilTag.corners, self.positioningVisionAprilTag.ids)
-
-                # print fpx
-                frame = cv2.putText(frame,fps_str,(7,70),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
-                frame = cv2.putText(frame,self.aps_str,(7,110),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
-                frame = cv2.putText(frame,self.hps_str,(7,150),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
-                cv2.namedWindow('frame', cv2.WND_PROP_FULLSCREEN)
-                cv2.imshow("frame", frame)
+                    # print fpx
+                    frame = cv2.putText(frame,fps_str,(7,70),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
+                    frame = cv2.putText(frame,self.aps_str,(7,110),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
+                    frame = cv2.putText(frame,self.hps_str,(7,150),cv2.FONT_HERSHEY_PLAIN,2,(255, 255, 255),2)
+                    cv2.namedWindow('frame', cv2.WND_PROP_FULLSCREEN)
+                    cv2.imshow("frame", frame)
 
 
-                key = cv2.waitKey(1) & 0xFF
-                if key == ord("q"):
-                    cv2.destroyAllWindows()
-                    break
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord("q"):
+                        cv2.destroyAllWindows()
+                        break
 
             time.sleep(self.time_sleep_update)
 
@@ -429,10 +430,11 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = -(-self.tilt-PITCH_REFERENCE+PITCH_CORRECTION) # camera pitch downward is positive
+                    tilt_now = -(self.tilt-PITCH_REFERENCE+PITCH_CORRECTION) # camera pitch downward is positive
                     roll_now = -(self.roll-ROLL_REFERENCE+ROLL_CORRECTION)  # camera roll right is positive
-                self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
-                
+                self.human_detected, frameHuman = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
+                with self.lock:
+                    self.frameHuman = frameHuman.copy()
                 self.human_newframe_processed = True
             
                 vision_msg = PositioningData()
