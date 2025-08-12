@@ -36,6 +36,7 @@ setup(
             "motionctrl_diablo = cb.Motion_Ctrl_diablo:main",
             "motionctrl_sim = cb.Motion_Ctrl_sim:main",
             "current_image = cb.get_Image:main",
+            "current_image_PiCam = cb.get_Image_PiCam:main",
             "current_AprilTag = cb.get_AprilTag:main",
             "state_machine = cb.state_machine:main",
             "state_machine_sim = cb.state_machine_sim:main",

@@ -12,9 +12,9 @@ cmdstop = "stop".encode('utf-8')
 Status = True
 debug_mode = False
 
-matrix_coefficients = np.load('/home/cb/Downloads/carrierbot_deprecated-main/2024-01-19_AprilTag_reviewed/1_CameraCalibration/RasPiCam_v3/results/K_PiCamV3_20250808_152053.npy')
+matrix_coefficients = np.load('/home/cb/Desktop/cb_workspace/src/cb_ros2/cb/camera_calib/camera_matrices/K_PiCamV3_20250808_152053.npy')
 print(matrix_coefficients)
-distortion_coefficients = np.load('/home/cb/Downloads/carrierbot_deprecated-main/2024-01-19_AprilTag_reviewed/1_CameraCalibration/RasPiCam_v3/results/D_PiCamV3_20250808_152053.npy')
+distortion_coefficients = np.load('/home/cb/Desktop/cb_workspace/src/cb_ros2/cb/camera_calib/camera_matrices/D_PiCamV3_20250808_152053.npy')
 print(distortion_coefficients)
 # Set desired resolution and fps
 video_w = 1920#2304#1536

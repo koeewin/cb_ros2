@@ -37,9 +37,9 @@ class CurrentImage(Node):
         # If camera initialized successfully, start timer to grab frames
         try:
             _ = self.picam2.capture_array()  # quick sanity check
-            period = 1.0 / float(self.fps)
+            period = 1.0 / float(20)
             self.timer = self.create_timer(period, self.timer_get_image)
-            self.get_logger().info(f"Capture OK — timer @ {self.fps} Hz started.")
+            self.get_logger().info(f"Capture OK — timer @ {self.fps} Hz started.!!!")
         except Exception as e:
             self.get_logger().error(f"Camera not ready, no timer started: {e}")
 
@@ -62,7 +62,7 @@ class CurrentImage(Node):
         self.picam2.start()
 
         self.get_logger().info("Warming up camera...")
-        self.picam2.set_controls({"AfMode": 1})
+        #self.picam2.set_controls({"AfMode": 1})
         time.sleep(1.0)
 
         try:
@@ -83,7 +83,9 @@ class CurrentImage(Node):
         if im is not None and im.size > 0:
             frame = cv2.resize(im,(960,540))
         # Publish as ROS Image
-            img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='rgb8')
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+            #img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='rgb8')
+            img_msg = self.bridge.cv2_to_imgmsg(gray_frame, encoding='mono8')
             img_msg.header.stamp = self.get_clock().now().to_msg()
             img_msg.header.frame_id = 'camera_frame'
             self.image_pub.publish(img_msg)
