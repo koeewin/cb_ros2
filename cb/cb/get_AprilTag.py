@@ -38,7 +38,7 @@ class CurrentAprilTag(Node):
         self.dir_ws = os.sep.join(self.dir_parts_ws[:-2])
 
         # Expected camera resolution
-        self.DIM = (640, 480)
+        self.DIM = (960, 540)
 
         # AprilTag side length in meters
         self.size_AprilTag = 0.1615
