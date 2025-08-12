@@ -22,7 +22,7 @@ class CurrentAprilTag(Node):
         super().__init__('current_apriltag')
 
         # Subscribe to the image topic from the camera
-        self.image_sub = self.create_subscription(Image, '/image', self.listener_callback_image, 10)
+        self.image_sub = self.create_subscription(Image, '/image_PiCam', self.listener_callback_image, 10)
 
         # Publisher for marker informations
         self.landmark_pub = self.create_publisher(Marker, '/landmark', 2)
