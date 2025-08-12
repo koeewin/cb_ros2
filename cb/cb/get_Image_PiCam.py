@@ -74,13 +74,14 @@ class CurrentImage(Node):
         """Callback function called by the timer to capture and publish a frame."""
         """Capture a frame from Picamera2 and publish (and optionally preview)."""
         try:
-            frame = self.picam2.capture_array()  # HxWx3 uint8, RGB888
+            im = self.picam2.capture_array()  # HxWx3 uint8, RGB888
         except Exception as e:
             self.get_logger().warn(f"Picam capture failed: {e}")
             return
         
         # Basic validity check
-        if frame is not None and frame.size > 0:
+        if im is not None and im.size > 0:
+            frame = cv2.resize(im,(960,540))
         # Publish as ROS Image
             img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='rgb8')
             img_msg.header.stamp = self.get_clock().now().to_msg()
