@@ -40,7 +40,7 @@ class HumanPathFollowing(Node):
         self.dd = DifferentialDrive(R, L)
 
         # Simulation parameters
-        self.sampleTime = 0.06  # Sample time [s], equals 20 Hz
+        self.sampleTime = 0.06          # Sample time [s], equals 20 Hz
         initPose = np.array([0, 0, 0])  # Initial pose (x, y, theta) of the robot
         self.currentPose = initPose
         self.lastPose = initPose
@@ -56,7 +56,7 @@ class HumanPathFollowing(Node):
         self.v_min = 0.0
         self.omega_min = -self.omega_max
 
-        # Setup MPC if selected
+        # === Setup MPC if selected ===
         if self.control == "MPC":
             N = 5
             u = np.zeros((N, 2))
@@ -75,6 +75,7 @@ class HumanPathFollowing(Node):
         self.ctrlMsgs = MotionCtrl()
         self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"diablo/MotionCmd",2)   
 
+        # multithreaded callback group for subscriptions
         self.callback_group = ReentrantCallbackGroup()
         self.human_position_subscription = self.create_subscription(
             Point,
@@ -85,32 +86,33 @@ class HumanPathFollowing(Node):
         
         self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
-        
+        # initialize the controllers
         self.trans_controller = Controller(0.6, 0.001, 0.0, 1.0, 1.0)
         self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
-
+        # intialize the velocities
         self.wRef = 0.0
         self.vRef = 0.0
         
         self.heightset = 0
         
     
-
+    # Callback for human position updates
     def human_position_callback(self, msg):
 
         start_time = time.time()
+
+        # Update the odometry message with the current pose from parallel thread
         self.lastPose = self.currentPose
 
         self.currentPose = np.array([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, self.odom_msg.pose.pose.orientation.z])
         
-        # Calculate relative distance between current pose and operator
+        # receive the human position from the message
         dx = msg.x
         dy = msg.y
-
         d_rel = np.array([dx, dy])
 
-        current_position = self.currentPose[:2]
-        last_position = self.lastPose[:2]
+        current_position = self.currentPose[:2] # current position (x,y) of the robot in the world frame
+        last_position = self.lastPose[:2]       # last position (x,y) of the robot in the world frame 
 
         current_position_last = - np.linalg.inv(Rz(self.currentPose[2])) @ np.append((current_position - last_position), 1) # Position (x,y) of the last pose w.r.t. the current pose in the current frame
 
