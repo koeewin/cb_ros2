@@ -117,9 +117,24 @@ class HumanPathFollowing(Node):
         current_pose_last = np.append(current_position_last[:2], self.lastPose[2] - self.currentPose[2])
 
         current_T_last = Tz(current_pose_last[2], current_pose_last)
-        self.path_storage = current_T_last @ np.vstack([self.path_storage, np.zeros((1, self.path_storage.shape[1])), np.ones((1, self.path_storage.shape[1]))])
-        self.path_storage = self.path_storage[:2, :]
-    
+
+        if self.path_storage.size > 0:
+            #print("Before transform, path_storage shape:", self.path_storage.shape)
+            tmp = np.vstack([self.path_storage,
+                    np.zeros((1, self.path_storage.shape[1])),
+                    np.ones((1, self.path_storage.shape[1]))])
+            #print("After vstack shape:", tmp.shape)
+            #print("current_T_last shape:", current_T_last.shape)
+
+            transformed = current_T_last @ np.vstack([self.path_storage, np.zeros((1, self.path_storage.shape[1])), np.ones((1, self.path_storage.shape[1]))])
+            self.path_storage = transformed[:2, :]
+            #print("Final path_storage shape:", self.path_storage.shape)
+        else: 
+            print("path_storage is empty, skipping transform.")
+        # Falls nach Transformation leer -> Fallback
+        if self.path_storage.size == 0:
+            #print("WARNING: path_storage became empty after transform, resetting.")
+            self.path_storage = np.zeros((2, 1))
 
         differences = np.diff(self.path_storage_smooth,axis=1)
         distances = np.sqrt(np.sum(differences**2, axis=0))
@@ -133,8 +148,10 @@ class HumanPathFollowing(Node):
         # If the distance to the last point is greater than 2 cm and the relative distance
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
         #if np.linalg.norm(d_rel[:2]) > 0.5:
-        if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and (np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3):
-        #if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and np.linalg.norm(d_rel[:2]) > 0.1:
+        print(self.path_storage)
+        if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
+            if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and (np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3):
+            #if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and np.linalg.norm(d_rel[:2]) > 0.1:
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         print(self.path_storage)
             
@@ -161,12 +178,28 @@ class HumanPathFollowing(Node):
           
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
             #start_time = time.time()
- 
+            if self.path_storage.shape[1] == 0:
+                #print("WARNING: path_storage empty, resetting")
+                self.path_storage = np.zeros((2,1))
             x_pos = self.path_storage[0,:]
             y_pos = self.path_storage[1,:]
 
             xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
-            xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+            
+            # print("x_pos:", x_pos)
+            # print("y_pos:", y_pos)
+            # print("xnew:", xnew)
+            # print("len(x_pos) =", len(x_pos), "len(y_pos) =", len(y_pos))
+            # print("unique x_pos =", np.unique(x_pos))
+
+            if len(np.unique(x_pos)) < 3:
+                print("Skipping LOESS: not enough unique x values")
+                # Fallback: einfach Originalwerte benutzen
+                xout2, yout2, weights2 = x_pos, y_pos, None
+            else:
+                xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+
+            
 
             self.path_storage_smooth = np.row_stack((xout2, yout2))
         
@@ -187,6 +220,9 @@ class HumanPathFollowing(Node):
                 vRef = np.clip(vRef, self.v_min, self.v_max)
                 wRef = np.clip(wRef, self.omega_min, self.omega_max)
             elif self.control == "PID0":
+                if self.path_storage.shape[1] == 0:
+                    #print("WARNING: path_storage empty, resetting")
+                    self.path_storage = np.zeros((2,1))
                 x = self.path_storage[0, 0]# or dx
                 y = self.path_storage[1, 0]# or dy
 
@@ -202,8 +238,9 @@ class HumanPathFollowing(Node):
                 self.rot_controller.run()
                 self.trans_controller.run()
 
-                vRef = self.trans_controller.get()
-                wRef = self.rot_controller.get()
+                self.vRef = self.trans_controller.get()
+                self.wRef = self.rot_controller.get()
+               
 
             #if self.path_storage.shape[1] > self.numPos:
             if True:
@@ -223,10 +260,10 @@ class HumanPathFollowing(Node):
         #    self.generMsgs(mode_mark=True,stand_mode=False)
         #    self.vel_cmd_publisher_.publish(self.ctrlMsgs)           
            
-      
+        print("vRef =========", self.vRef, ", wRef =========", self.wRef)
 
-        self.generMsgs(forward=self.vRef, left=self.wRef)
-        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+        #self.generMsgs(forward=self.vRef, left=self.wRef)
+        #self.vel_cmd_publisher_.publish(self.ctrlMsgs)
 
         #self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(vRef), float(wRef)))
 
@@ -430,7 +467,7 @@ class Pose:
 
 def main(args=None):
 
-    for i in range(5):
+    for i in range(2):
         print(i)
         time.sleep(1)
 
