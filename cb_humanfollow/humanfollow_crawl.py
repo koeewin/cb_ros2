@@ -73,7 +73,7 @@ class HumanPathFollowing(Node):
         self.odom_received = False
 
         self.ctrlMsgs = MotionCtrl()
-        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"/diablo/MotionCmd",2)   
+        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"diablo/MotionCmd",2)   
 
         self.callback_group = ReentrantCallbackGroup()
         self.human_position_subscription = self.create_subscription(
@@ -83,7 +83,7 @@ class HumanPathFollowing(Node):
             10,
             callback_group=self.callback_group) 
         
-        self.wheel_encoder_subscription = self.create_subscription(LegMotors, '/diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
+        self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
         
         self.trans_controller = Controller(0.6, 0.001, 0.0, 1.0, 1.0)
@@ -96,7 +96,7 @@ class HumanPathFollowing(Node):
         
     
 
-    def was (self, msg):
+    def human_position_callback(self, msg):
 
         start_time = time.time()
         self.lastPose = self.currentPose
@@ -126,11 +126,24 @@ class HumanPathFollowing(Node):
         self.total_length = np.sum(distances)
         
             
+        #print(self.total_length)
+ 
+        
+        ## This part is for storing the path
+        # If the distance to the last point is greater than 2 cm and the relative distance
+        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
+        #if np.linalg.norm(d_rel[:2]) > 0.5:
+        if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and (np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3):
+        #if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and np.linalg.norm(d_rel[:2]) > 0.1:
+                self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
+        print(self.path_storage)
+            
+        #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
         self.wRef = 0.0
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.6 or self.total_length > 1.6):
-        if True:
+        
+        if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
+        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
         #if self.total_length > 1.3:
         
         #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.5 or self.total_length > 1.5):
@@ -152,10 +165,10 @@ class HumanPathFollowing(Node):
             x_pos = self.path_storage[0,:]
             y_pos = self.path_storage[1,:]
 
-            #xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
-            #xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+            xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+            xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
 
-            #self.path_storage_smooth = np.row_stack((xout2, yout2))
+            self.path_storage_smooth = np.row_stack((xout2, yout2))
         
 
             if self.control == "MPC":
@@ -173,21 +186,26 @@ class HumanPathFollowing(Node):
 
                 vRef = np.clip(vRef, self.v_min, self.v_max)
                 wRef = np.clip(wRef, self.omega_min, self.omega_max)
-            elif self.control == "PID0":    # PID Controller by Birne
-              
-                angle = math.atan2(dy,dx)
+            elif self.control == "PID0":
+                x = self.path_storage[0, 0]# or dx
+                y = self.path_storage[1, 0]# or dy
+
+                print("x: ", x, "y: ", y)
+
+                angle = math.atan2(y,x)
                 if abs(angle) <= 0.08:
                     angle = 0.0
                 
                 self.rot_controller.put(angle)
-                self.trans_controller.put(dx)
+                self.trans_controller.put(x)
 
                 self.rot_controller.run()
                 self.trans_controller.run()
 
-                self.vRef = self.trans_controller.get()
-                self.wRef = self.rot_controller.get()
+                vRef = self.trans_controller.get()
+                wRef = self.rot_controller.get()
 
+            #if self.path_storage.shape[1] > self.numPos:
             if True:
                 self.path_storage = self.path_storage[:, 1:]
                 #self.path_storage = self.find_forward_points()
@@ -207,14 +225,10 @@ class HumanPathFollowing(Node):
            
       
 
-        # Publisch velocities
-        mctrl_msg = MotionCtrl()
-        mctrl_msg.value.forward = self.vRef
-        mctrl_msg.value.left = self.wRef
+        self.generMsgs(forward=self.vRef, left=self.wRef)
+        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
 
-        self.vel_cmd_publisher_.publish(mctrl_msg)
-
-        self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(mctrl_msg.value.forward), float(mctrl_msg.value.left)))
+        #self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(vRef), float(wRef)))
 
 
     # def odom_callback(self, msg):
@@ -311,7 +325,34 @@ class HumanPathFollowing(Node):
         return np.empty((2, 0))
 
 
-    
+    def generMsgs(self, forward=None,left=None,roll=None,up=None,
+                pitch=None,mode_mark=False,height_ctrl_mode = None,
+                pitch_ctrl_mode = None,roll_ctrl_mode = None,stand_mode = False,
+                jump_mode = False,dance_mode = None):
+        self.ctrlMsgs.mode_mark = mode_mark
+        self.ctrlMsgs.mode.jump_mode = jump_mode
+
+        if dance_mode is not None:
+            self.ctrlMsgs.mode.split_mode = dance_mode
+        if forward is not None:
+            self.ctrlMsgs.value.forward = forward
+        if left is not None:
+            self.ctrlMsgs.value.left = left
+        if pitch is not None:
+            self.ctrlMsgs.value.pitch = pitch
+        if roll is not None:
+            self.ctrlMsgs.value.roll = roll
+        if up is not None:
+            self.ctrlMsgs.value.up = up
+        if height_ctrl_mode is not None:
+            self.ctrlMsgs.mode.height_ctrl_mode = height_ctrl_mode
+        if pitch_ctrl_mode is not None:
+            self.ctrlMsgs.mode.pitch_ctrl_mode = pitch_ctrl_mode
+        if roll_ctrl_mode is not None:
+            self.ctrlMsgs.mode.roll_ctrl_mode = roll_ctrl_mode
+        if stand_mode is not None:
+            self.ctrlMsgs.mode.stand_mode = stand_mode
+
 class Controller:
     def __init__(self, p, iTs, lowerLimit=float('-inf'), upperLimit=float('inf'), aw=0.0):
         self._u = 0.0

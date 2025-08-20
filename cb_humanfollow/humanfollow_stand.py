@@ -24,7 +24,7 @@ class HumanPathFollowing(Node):
         super().__init__('human_path_following_controller') 
 
         # Choose self.control method
-        self.control = "PID0"  # Options: MPC, PID, PID0
+        self.control = "MPC"  # Options: MPC, PID, PID0
 
         self.odom_msg = Odometry()
 
@@ -40,7 +40,7 @@ class HumanPathFollowing(Node):
         self.dd = DifferentialDrive(R, L)
 
         # Simulation parameters
-        self.sampleTime = 0.06  # Sample time [s], equals 20 Hz
+        self.sampleTime = 0.05  # Sample time [s], equals 20 Hz
         initPose = np.array([0, 0, 0])  # Initial pose (x, y, theta) of the robot
         self.currentPose = initPose
         self.lastPose = initPose
@@ -51,9 +51,9 @@ class HumanPathFollowing(Node):
 
         # Define self.control and velocity limits
         self.numPos = 20  # Number of stored self.positions corresponding to a 1 m distance to human
-        self.v_max = 0.8
-        self.omega_max = np.pi/4.0
-        self.v_min = 0.0
+        self.v_max = 0.9
+        self.omega_max = np.pi/1.7
+        self.v_min = -self.v_max
         self.omega_min = -self.omega_max
 
         # Setup MPC if selected
@@ -62,8 +62,8 @@ class HumanPathFollowing(Node):
             u = np.zeros((N, 2))
 
             self.optimizeProblem = MpcOptimizer(N, self.sampleTime, u,
-                                        WeightX=100, WeightY=7, WeightTheta=0.12,
-                                        WeightV=0.01, WeightOmega=0.03,
+                                        WeightX=100, WeightY=4, WeightTheta=0.12,
+                                        WeightV=2, WeightOmega=0.06,
                                         WeightVLast=0.0, WeightOmegaLast=0.0,
                                         VelLim=[self.v_min, self.v_max], AngVelLim=[self.omega_min, self.omega_max])
             self.optimizeProblem.setup_problem()
@@ -73,17 +73,17 @@ class HumanPathFollowing(Node):
         self.odom_received = False
 
         self.ctrlMsgs = MotionCtrl()
-        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"/diablo/MotionCmd",2)   
+        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"diablo/MotionCmd",2)   
 
         self.callback_group = ReentrantCallbackGroup()
         self.human_position_subscription = self.create_subscription(
             Point,
-            '/human/positionFuse',
+            'human_position',
             self.human_position_callback,
             10,
             callback_group=self.callback_group) 
         
-        self.wheel_encoder_subscription = self.create_subscription(LegMotors, '/diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
+        self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
         
         self.trans_controller = Controller(0.6, 0.001, 0.0, 1.0, 1.0)
@@ -91,14 +91,12 @@ class HumanPathFollowing(Node):
 
         self.wRef = 0.0
         self.vRef = 0.0
-        
         self.heightset = 0
         
     
 
-    def was (self, msg):
+    def human_position_callback(self, msg):
 
-        start_time = time.time()
         self.lastPose = self.currentPose
 
         self.currentPose = np.array([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, self.odom_msg.pose.pose.orientation.z])
@@ -120,25 +118,29 @@ class HumanPathFollowing(Node):
         self.path_storage = current_T_last @ np.vstack([self.path_storage, np.zeros((1, self.path_storage.shape[1])), np.ones((1, self.path_storage.shape[1]))])
         self.path_storage = self.path_storage[:2, :]
     
-
         differences = np.diff(self.path_storage_smooth,axis=1)
         distances = np.sqrt(np.sum(differences**2, axis=0))
         self.total_length = np.sum(distances)
         
             
-        self.vRef = 0.0
-        self.wRef = 0.0
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.6 or self.total_length > 1.6):
-        if True:
-        #if self.total_length > 1.3:
+        #print(self.total_length)
+ 
         
-        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.5 or self.total_length > 1.5):
-            #start_time = time.time()
-            #print(".")
-            #print(np.linalg.norm(d_rel[:2]))
-            #print(self.total_length)
-            #print(".")
+
+        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
+        #if np.linalg.norm(d_rel[:2]) > 0.5:
+        if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and (np.linalg.norm(d_rel[:2]) > 1.6 or self.total_length > 1.6):
+        
+        #if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and np.linalg.norm(d_rel[:2]) > 0.5:
+                self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
+        #print(self.path_storage)
+            
+        #self.path_storage = self.find_forward_points()
+ 
+        if np.linalg.norm(d_rel[:2]) > 1.6 or self.total_length > 1.6:
+        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3):
+            start_time = time.time()
+            
             #self.path_storage = self.find_forward_points()
             #self.path_storage_smooth, self.total_length = self.reconstruct()
             #print(time.time()-start_time)
@@ -152,17 +154,17 @@ class HumanPathFollowing(Node):
             x_pos = self.path_storage[0,:]
             y_pos = self.path_storage[1,:]
 
-            #xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
-            #xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+            xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+            xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
 
-            #self.path_storage_smooth = np.row_stack((xout2, yout2))
+            self.path_storage_smooth = np.row_stack((xout2, yout2))
         
 
             if self.control == "MPC":
                 # Perform MPC optimization
-                #st = time.time()
-                self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
-                #print(time.time() - st)
+                st = time.time()
+                self.optimizeProblem.solve_problem(self.path_storage, [self.vRef,self.wRef])
+                print(time.time() - st)
                 self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
                 self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
             elif self.control == "PID":
@@ -173,48 +175,54 @@ class HumanPathFollowing(Node):
 
                 vRef = np.clip(vRef, self.v_min, self.v_max)
                 wRef = np.clip(wRef, self.omega_min, self.omega_max)
-            elif self.control == "PID0":    # PID Controller by Birne
-              
-                angle = math.atan2(dy,dx)
+            elif self.control == "PID0":
+                x = self.path_storage[0, 0]
+                y = self.path_storage[1, 0]
+
+                angle = math.atan2(y,x)
                 if abs(angle) <= 0.08:
                     angle = 0.0
                 
                 self.rot_controller.put(angle)
-                self.trans_controller.put(dx)
+                self.trans_controller.put(x)
 
                 self.rot_controller.run()
                 self.trans_controller.run()
 
-                self.vRef = self.trans_controller.get()
-                self.wRef = self.rot_controller.get()
+                vRef = self.trans_controller.get()
+                wRef = self.rot_controller.get()
 
+            #if self.path_storage.shape[1] > self.numPos:
             if True:
                 self.path_storage = self.path_storage[:, 1:]
-                #self.path_storage = self.find_forward_points()
                 
         else:
             self.vRef = 0.0
             self.wRef = 0.0
-        
+
         # Calculate motor velocities and perform forward kinematics
         # wL, wR = self.dd.inverse_kinematics(vRef, wRef)
         # v, w = self.dd.forward_kinematics(wL, wR)
-        
-        #if not self.heightset:
-        #    self.heightset = 1
-        #    self.generMsgs(mode_mark=True,stand_mode=False)
-        #    self.vel_cmd_publisher_.publish(self.ctrlMsgs)           
-           
-      
+        if not self.heightset:
+            self.heightset = 1
+            self.generMsgs(mode_mark=True,stand_mode=True)
+            self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+            
+            self.generMsgs(up=0.5)
+            self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+            
+            #self.generMsgs(pitch=0.1)                       # Set this and send 
+            #self.vel_cmd_publisher_.publish(self.ctrlMsgs)  # to set the pitch of the robot
+            
 
-        # Publisch velocities
-        mctrl_msg = MotionCtrl()
-        mctrl_msg.value.forward = self.vRef
-        mctrl_msg.value.left = self.wRef
+            
+            
+        #self.generMsgs(pitch=0.1)
+        #self.vel_cmd_publisher_.publish(self.ctrlMsgs)    
+        self.generMsgs(forward=self.vRef, left=self.wRef)
+        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
 
-        self.vel_cmd_publisher_.publish(mctrl_msg)
-
-        self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(mctrl_msg.value.forward), float(mctrl_msg.value.left)))
+        #self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(vRef), float(wRef)))
 
 
     # def odom_callback(self, msg):
@@ -222,7 +230,7 @@ class HumanPathFollowing(Node):
 
     #     self.currentPose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.orientation.z])
     #     # self.odom_received = True
-        #print(time.time()-start_time)
+
     def wheel_encoder_callback(self, msg):
         left_wheel_enc_rev = msg.left_wheel_enc_rev
         right_wheel_enc_rev = msg.right_wheel_enc_rev
@@ -260,7 +268,7 @@ class HumanPathFollowing(Node):
         # print for debugging
         # self.get_logger().info(f'Position - x: {self.odom_msg.pose.pose.position.x}, y: {self.odom_msg.pose.pose.position.y}, theta: {self.odom_msg.pose.pose.orientation.z}')
 
-    def reconstruct(self, target_distance=0.05, n_loess_points=10, frac=0.7, degree=1):
+    def reconstruct(self, target_distance=0.05, n_loess_points=10, frac=0.5, degree=1):
         """
         Smooth the path with LOESS and resample to ensure approximately equal Euclidean distances
         while minimizing computational cost.
@@ -300,8 +308,8 @@ class HumanPathFollowing(Node):
         x_coords, y_coords = self.path_storage[0, :], self.path_storage[1, :]
 
         # Find the first point ahead of the robot
-        for i in range(x_coords.shape[0]) :             
-            if x_coords[i] > 0.1 and np.linalg.norm(self.path_storage[:, i]) > 0.2: 
+        for i in range(x_coords.shape[0]):             
+            if x_coords[i] > 0.01: 
                 # Return the remaining path and the next waypoint 
                 pruned_path = self.path_storage[:, i:] 
                 return pruned_path
@@ -311,7 +319,34 @@ class HumanPathFollowing(Node):
         return np.empty((2, 0))
 
 
-    
+    def generMsgs(self, forward=None,left=None,roll=None,up=None,
+                pitch=None,mode_mark=False,height_ctrl_mode = None,
+                pitch_ctrl_mode = None,roll_ctrl_mode = None,stand_mode = None,
+                jump_mode = False,dance_mode = None):
+        self.ctrlMsgs.mode_mark = mode_mark
+        self.ctrlMsgs.mode.jump_mode = jump_mode
+
+        if dance_mode is not None:
+            self.ctrlMsgs.mode.split_mode = dance_mode
+        if forward is not None:
+            self.ctrlMsgs.value.forward = forward
+        if left is not None:
+            self.ctrlMsgs.value.left = left
+        if pitch is not None:
+            self.ctrlMsgs.value.pitch = pitch
+        if roll is not None:
+            self.ctrlMsgs.value.roll = roll
+        if up is not None:
+            self.ctrlMsgs.value.up = up
+        if height_ctrl_mode is not None:
+            self.ctrlMsgs.mode.height_ctrl_mode = height_ctrl_mode
+        if pitch_ctrl_mode is not None:
+            self.ctrlMsgs.mode.pitch_ctrl_mode = pitch_ctrl_mode
+        if roll_ctrl_mode is not None:
+            self.ctrlMsgs.mode.roll_ctrl_mode = roll_ctrl_mode
+        if stand_mode is not None:
+            self.ctrlMsgs.mode.stand_mode = stand_mode
+
 class Controller:
     def __init__(self, p, iTs, lowerLimit=float('-inf'), upperLimit=float('inf'), aw=0.0):
         self._u = 0.0
@@ -389,17 +424,12 @@ class Pose:
 
 def main(args=None):
 
-    for i in range(5):
-        print(i)
-        time.sleep(1)
-
     rclpy.init(args=args)
 
     human_path_following_controller = HumanPathFollowing()
 
     executor = rclpy.executors.MultiThreadedExecutor(num_threads=2)
     executor.add_node(human_path_following_controller)
-
     print("Start")
     try:
         executor.spin()
