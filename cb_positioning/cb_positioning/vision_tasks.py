@@ -45,7 +45,7 @@ except ImportError:
 
 
 ## The height of the camera measured from the ground
-CAMERA_HEIGHT = 0.5 
+CAMERA_HEIGHT = 0.55 
 
 ## Camera source
 # 
@@ -139,7 +139,7 @@ class VisionTasks(Node):
         ##  Manually set by user
         #  - `True` for visualization of human and AprilTag detection
         #  - `False` otherwise 
-        self.show_ui = True 
+        self.show_ui = False 
         ##  @}    
 
         if self.show_ui:
