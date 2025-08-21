@@ -28,6 +28,8 @@ class HumanPathFollowing(Node):
 
         # Choose self.control method
         self.control = "PID0"  # Options: MPC, PID, PID0
+        self.d_follow = 1.5  # Distance to follow the human in meters
+        self.d_stop = 1.2  # Distance to rotate around the human in meters
 
         self.odom_msg = Odometry()
 
@@ -188,23 +190,12 @@ class HumanPathFollowing(Node):
         
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
         #dx = msg.x
-        if dx > 1.39:
+        if dx > self.d_stop:
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
         #if self.total_length > 1.3:
         
         #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.5 or self.total_length > 1.5):
-            #start_time = time.time()
-            #print(".")
-            #print(np.linalg.norm(d_rel[:2]))
-            #print(self.total_length)
-            #print(".")
-            #self.path_storage = self.find_forward_points()
-            #self.path_storage_smooth, self.total_length = self.reconstruct()
-            #print(time.time()-start_time)
-        
-        
-            #self.path_storage_smooth = self.find_forward_points()
-          
+         
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
             #start_time = time.time()
             if self.control == "MPC":
@@ -223,64 +214,65 @@ class HumanPathFollowing(Node):
             else:   # which is PID or PID0
                 x_pos = dx
                 y_pos = dy
+
+                angle = math.atan2(y_pos,x_pos)
+                if abs(angle) <= 0.08:
+                    angle = 0.0
+                
             if self.DEBUG:
                 print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
 
         
+            if dx > self.d_follow: # perform the path following control
+                print("STATE ===> Follow the human") 
+                if self.control == "MPC":
+                    # Perform MPC optimization
+                    #st = time.time()
+                    self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
+                    #print(time.time() - st)
+                    self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
+                    self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
+                elif self.control == "PID":
+                    # Perform PID self.control
+                    vRef = 3 * np.linalg.norm(self.path_storage[:, 0])  # Linear velocity [m/s]
+                    phi = np.arctan2(self.path_storage[1, 0], self.path_storage[0, 0])
+                    wRef = 5 * phi  # Angular velocity [rad/s]
 
-            if self.control == "MPC":
-                # Perform MPC optimization
-                #st = time.time()
-                self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
-                #print(time.time() - st)
-                self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
-                self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
-            elif self.control == "PID":
-                # Perform PID self.control
-                vRef = 3 * np.linalg.norm(self.path_storage[:, 0])  # Linear velocity [m/s]
-                phi = np.arctan2(self.path_storage[1, 0], self.path_storage[0, 0])
-                wRef = 5 * phi  # Angular velocity [rad/s]
+                    vRef = np.clip(vRef, self.v_min, self.v_max)
+                    wRef = np.clip(wRef, self.omega_min, self.omega_max)
 
-                vRef = np.clip(vRef, self.v_min, self.v_max)
-                wRef = np.clip(wRef, self.omega_min, self.omega_max)
-            elif self.control == "PID0":
+                elif self.control == "PID0":                 
+                    self.rot_controller.put(angle)
+                    self.trans_controller.put(abs(x_pos-1.5))
 
-                x = x_pos
-                y = y_pos
+                    self.rot_controller.run()
+                    self.trans_controller.run()
 
-                angle = math.atan2(y,x)
-                if abs(angle) <= 0.08:
-                    angle = 0.0
-                
+                    self.vRef = self.trans_controller.get()
+                    self.wRef = self.rot_controller.get()
+
+            elif dx > self.d_stop and dx < self.d_follow: # rotate to finde the human
+                print("STATE ===> Rotate to find the human") 
+                self.trans_controller.reset()
                 self.rot_controller.put(angle)
-                self.trans_controller.put(abs(x-1.5))
-
                 self.rot_controller.run()
-                self.trans_controller.run()
 
-                self.vRef = self.trans_controller.get()
                 self.wRef = self.rot_controller.get()
-               
+                self.vRef = 0.0
 
-            if self.path_storage.shape[1]>1:
-                self.path_storage = self.path_storage[:, 1:]
-                #self.path_storage = self.find_forward_points()
-                if self.DEBUG:            
-                    print("Path storage after removal:", self.path_storage)
-                
         else:
+            print("STATE ===> STOP") 
             self.vRef = 0.0
             self.wRef = 0.0
         
-        
-        #if not self.heightset:
-        #    self.heightset = 1
-        #    self.generMsgs(mode_mark=True,stand_mode=False)
-        #    self.vel_cmd_publisher_.publish(self.ctrlMsgs)           
-           
-        print("vRef =========", self.vRef, ", wRef =========", self.wRef)
+        if self.path_storage.shape[1]>1:
+            self.path_storage = self.path_storage[:, 1:]
+                #self.path_storage = self.find_forward_points()
+            if self.DEBUG:            
+                print("Path storage after removal:", self.path_storage)         
 
         
+        #### ======== Publish the motion command ======== ####
         self.ctrlMsgs.mode_mark = False
 
         # only first message should have mode_mark=True (robot will stand up)

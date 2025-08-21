@@ -5,6 +5,7 @@ from rclpy.node import Node
 from geometry_msgs.msg import Point
 from cb_interfaces.msg import PositioningData
 from rclpy.executors import MultiThreadedExecutor
+import math
 import time
 import threading
 
@@ -41,11 +42,28 @@ class Fusion(Node):
 
     def fuse(self):
         with self.lock:
+            # Considering offsets for UWB and Vision data
+            OFFSET_X_UWB = -0.1
+            OFFSET_X_VISION = 0.135
+
             uwb_pos = self.uwb_pos
             vision_pos = self.vision_pos
+            
+            uwb_x = uwb_pos.x + OFFSET_X_UWB
+            uwb_y = uwb_pos.y
+            vision_x = vision_pos.x + OFFSET_X_VISION
+            vision_y = vision_pos.y
 
-        self.positioningFusion.put_measurements(uwb_pos.angle, uwb_pos.distance, 
-                                                vision_pos.angle, vision_pos.distance)   
+            uwb_distance = (uwb_x**2 + uwb_y**2)**0.5
+            uwb_angle = math.atan2(uwb_y, uwb_x)
+
+            vision_distance = (vision_x**2 + vision_y**2)**0.5
+            vision_angle = math.atan2(vision_y, vision_x)
+
+        # self.positioningFusion.put_measurements(uwb_pos.angle, uwb_pos.distance, 
+        #                                         vision_pos.angle, vision_pos.distance) 
+        self.positioningFusion.put_measurements(uwb_angle, uwb_distance, 
+                                                vision_angle,  vision_distance)   
         self.positioningFusion.run() 
 
         msg = Point()
