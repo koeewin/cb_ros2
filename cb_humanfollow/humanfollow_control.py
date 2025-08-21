@@ -16,15 +16,12 @@ import math
 from motion_msgs.msg import LegMotors  # Adjust this to the correct import path
 from loess.loess_1d import loess_1d
 from Paths.path import gen_path, arclength
-import warnings
 
 
 class HumanPathFollowing(Node):
 
     def __init__(self):
-        super().__init__('human_path_following_controller')
-        self.DEBUG = False  # Set to True for debugging output
-        self.first_time = True  # Flag to send mode_mark on first command 
+        super().__init__('human_path_following_controller') 
 
         # Choose self.control method
         self.control = "PID0"  # Options: MPC, PID, PID0
@@ -90,7 +87,7 @@ class HumanPathFollowing(Node):
         self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
         # initialize the controllers
-        self.trans_controller = Controller(0.6, 0.05, 0.0, 1.0, 1.0)
+        self.trans_controller = Controller(0.6, 0.001, 0.0, 1.0, 1.0)
         self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
         # intialize the velocities
         self.wRef = 0.0
@@ -108,9 +105,7 @@ class HumanPathFollowing(Node):
         self.lastPose = self.currentPose
 
         self.currentPose = np.array([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, self.odom_msg.pose.pose.orientation.z])
-        if self.DEBUG:
-            print("Current Pose:", self.currentPose)
-
+        
         # receive the human position from the message
         dx = msg.x
         dy = msg.y
@@ -120,22 +115,15 @@ class HumanPathFollowing(Node):
         current_position = self.currentPose[:2] # current position (x,y) of the robot in the world frame
         last_position = self.lastPose[:2]       # last position (x,y) of the robot in the world frame 
         
-        # Following three lines are to find current_T_last, first find 
-        # current_Translation_last: Position (x,y) of the last pose w.r.t. the current pose in the current frame
-        current_position_last = - np.linalg.inv(Rz(self.currentPose[2])) @ np.append((current_position - last_position), 1) 
-        # construct the current_pose_last: [x,y,theta] in the current frame
-        current_pose_last = np.append(current_position_last[:2], self.lastPose[2] - self.currentPose[2])
-        # current_T_last
-        current_T_last = Tz(current_pose_last[2], current_pose_last)
-        if self.DEBUG:
-            print("current_T_last:", current_T_last)
+        world_T_current = Tz(self.currentPose[2], current_position)
+        world_T_last    = Tz(self.lastPose[2], last_position)
+        current_T_last = np.linalg.inv(world_T_current) @ world_T_last
 
         if self.path_storage.size > 0:
-            # -- my be delete this part later --
             #print("Before transform, path_storage shape:", self.path_storage.shape)
-            # tmp = np.vstack([self.path_storage,
-            #         np.zeros((1, self.path_storage.shape[1])),
-            #         np.ones((1, self.path_storage.shape[1]))])
+            tmp = np.vstack([self.path_storage,
+                    np.zeros((1, self.path_storage.shape[1])),
+                    np.ones((1, self.path_storage.shape[1]))])
             #print("After vstack shape:", tmp.shape)
             #print("current_T_last shape:", current_T_last.shape)
 
@@ -144,41 +132,29 @@ class HumanPathFollowing(Node):
             #print("Final path_storage shape:", self.path_storage.shape)
         else: 
             print("path_storage is empty, skipping transform.")
-            warnings.warn("path_storage is empty, skipping transform.")
-            return
-        
-        # Calculate the total length of the path
+        # Falls nach Transformation leer -> Fallback
+        if self.path_storage.size == 0:
+            #print("WARNING: path_storage became empty after transform, resetting.")
+            self.path_storage = np.zeros((2, 1))
+
         differences = np.diff(self.path_storage_smooth,axis=1)
         distances = np.sqrt(np.sum(differences**2, axis=0))
         self.total_length = np.sum(distances)
-
-        if self.DEBUG:
-            print("Path storage after transformation:", self.path_storage)
-            print("Total length of path storage:", self.total_length)
         
             
+        #print(self.total_length)
  
         
-        ## This part is for storing the path following condistion may be deleted later
+        ## This part is for storing the path
         # If the distance to the last point is greater than 2 cm and the relative distance
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-        #if np.linalg.norm(d_rel[:2]) > 0.5
-
-        # Calculate parameters for storing the path
-        dist2laststorage = np.linalg.norm(self.path_storage[:, -1] - d_rel[:2])
-        dist2human = np.linalg.norm(d_rel[:2])
-        lenpathstorage = self.total_length
-        if self.DEBUG:
-            print("Distance to last storage point:", dist2laststorage)
-            print("Distance to human:", dist2human)
-            print("Length of path storage:", lenpathstorage)
-            print("Path storage with new points:", self.path_storage)
-       
-        # Path storage condition:
+        #if np.linalg.norm(d_rel[:2]) > 0.5:
+        print(self.path_storage)
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
-            if dist2laststorage > 2e-2 and (dist2human > 1.3 or lenpathstorage > 1.5):
+            if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and (np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3):
+            #if np.linalg.norm(self.path_storage[:, -1] - d_rel[:2]) > 2e-2 and np.linalg.norm(d_rel[:2]) > 0.1:
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
-
+        print(self.path_storage)
             
         #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
@@ -203,25 +179,30 @@ class HumanPathFollowing(Node):
           
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
             #start_time = time.time()
-            if self.control == "MPC":
-                x_pos = self.path_storage[0,:]
-                y_pos = self.path_storage[1,:]
-                xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+            if self.path_storage.shape[1] == 0:
+                #print("WARNING: path_storage empty, resetting")
+                self.path_storage = np.zeros((2,1))
+            x_pos = self.path_storage[0,:]
+            y_pos = self.path_storage[1,:]
 
-                if len(np.unique(x_pos)) < 3:
-                    print("Skipping LOESS: not enough unique x values")
-                    # Fallback: einfach Originalwerte benutzen
-                    xout2, yout2, weights2 = x_pos, y_pos, None
-                else:
-                    xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
-                
-                self.path_storage_smooth = np.row_stack((xout2, yout2))
-            else:   # which is PID or PID0
-                x_pos = dx
-                y_pos = dy
-            if self.DEBUG:
-                print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
+            xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+            
+            # print("x_pos:", x_pos)
+            # print("y_pos:", y_pos)
+            # print("xnew:", xnew)
+            # print("len(x_pos) =", len(x_pos), "len(y_pos) =", len(y_pos))
+            # print("unique x_pos =", np.unique(x_pos))
 
+            if len(np.unique(x_pos)) < 3:
+                print("Skipping LOESS: not enough unique x values")
+                # Fallback: einfach Originalwerte benutzen
+                xout2, yout2, weights2 = x_pos, y_pos, None
+            else:
+                xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+
+            
+
+            self.path_storage_smooth = np.row_stack((xout2, yout2))
         
 
             if self.control == "MPC":
@@ -240,9 +221,13 @@ class HumanPathFollowing(Node):
                 vRef = np.clip(vRef, self.v_min, self.v_max)
                 wRef = np.clip(wRef, self.omega_min, self.omega_max)
             elif self.control == "PID0":
+                if self.path_storage.shape[1] == 0:
+                    #print("WARNING: path_storage empty, resetting")
+                    self.path_storage = np.zeros((2,1))
+                x = self.path_storage[0, 0]# or dx
+                y = self.path_storage[1, 0]# or dy
 
-                x = x_pos
-                y = y_pos
+                print("x: ", x, "y: ", y)
 
                 angle = math.atan2(y,x)
                 if abs(angle) <= 0.08:
@@ -258,6 +243,7 @@ class HumanPathFollowing(Node):
                 self.wRef = self.rot_controller.get()
                
 
+            #if self.path_storage.shape[1] > self.numPos:
             if True:
                 self.path_storage = self.path_storage[:, 1:]
                 #self.path_storage = self.find_forward_points()
@@ -266,6 +252,9 @@ class HumanPathFollowing(Node):
             self.vRef = 0.0
             self.wRef = 0.0
         
+        # Calculate motor velocities and perform forward kinematics
+        # wL, wR = self.dd.inverse_kinematics(vRef, wRef)
+        # v, w = self.dd.forward_kinematics(wL, wR)
         
         #if not self.heightset:
         #    self.heightset = 1
@@ -274,37 +263,18 @@ class HumanPathFollowing(Node):
            
         print("vRef =========", self.vRef, ", wRef =========", self.wRef)
 
-        
-        self.ctrlMsgs.mode_mark = False
-
-        # only first message should have mode_mark=True (robot will stand up)
-        if self.first_time == True:
-            self.ctrlMsgs.mode_mark = True
-            self.first_time = False
-
-        # set control modes
-        self.ctrlMsgs.mode.stand_mode = True
-        self.ctrlMsgs.mode.height_ctrl_mode = True
-        self.ctrlMsgs.mode.pitch_ctrl_mode = True
-
-        # set fixed up/pitch values
-        self.ctrlMsgs.value.up = 1.0
-        self.ctrlMsgs.value.pitch = 0.0
-
-        # default: no motion
-        self.ctrlMsgs.value.forward = 0.0
-        self.ctrlMsgs.value.left = 0.0
-
-        self.ctrlMsgs.value.forward = self.vRef
-        self.ctrlMsgs.value.left = self.wRef
-
-        # publish motion command
+        #self.generMsgs(forward=self.vRef, left=self.wRef)
         #self.vel_cmd_publisher_.publish(self.ctrlMsgs)
-        if self.DEBUG:
-            self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
 
-## ======== srart of helper functions ==========
+        #self.get_logger().info('Publishing: v:"%f", w:"%f"' % (float(vRef), float(wRef)))
 
+
+    # def odom_callback(self, msg):
+    #     self.lastPose = self.currentPose
+
+    #     self.currentPose = np.array([msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.orientation.z])
+    #     # self.odom_received = True
+        #print(time.time()-start_time)
     def wheel_encoder_callback(self, msg):
         left_wheel_enc_rev = msg.left_wheel_enc_rev
         right_wheel_enc_rev = msg.right_wheel_enc_rev
@@ -391,6 +361,35 @@ class HumanPathFollowing(Node):
         # No points ahead 
         print(1)
         return np.empty((2, 0))
+
+
+    def generMsgs(self, forward=None,left=None,roll=None,up=None,
+                pitch=None,mode_mark=False,height_ctrl_mode = None,
+                pitch_ctrl_mode = None,roll_ctrl_mode = None,stand_mode = False,
+                jump_mode = False,dance_mode = None):
+        self.ctrlMsgs.mode_mark = mode_mark
+        self.ctrlMsgs.mode.jump_mode = jump_mode
+
+        if dance_mode is not None:
+            self.ctrlMsgs.mode.split_mode = dance_mode
+        if forward is not None:
+            self.ctrlMsgs.value.forward = forward
+        if left is not None:
+            self.ctrlMsgs.value.left = left
+        if pitch is not None:
+            self.ctrlMsgs.value.pitch = pitch
+        if roll is not None:
+            self.ctrlMsgs.value.roll = roll
+        if up is not None:
+            self.ctrlMsgs.value.up = up
+        if height_ctrl_mode is not None:
+            self.ctrlMsgs.mode.height_ctrl_mode = height_ctrl_mode
+        if pitch_ctrl_mode is not None:
+            self.ctrlMsgs.mode.pitch_ctrl_mode = pitch_ctrl_mode
+        if roll_ctrl_mode is not None:
+            self.ctrlMsgs.mode.roll_ctrl_mode = roll_ctrl_mode
+        if stand_mode is not None:
+            self.ctrlMsgs.mode.stand_mode = stand_mode
 
 class Controller:
     def __init__(self, p, iTs, lowerLimit=float('-inf'), upperLimit=float('inf'), aw=0.0):
