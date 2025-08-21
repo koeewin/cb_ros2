@@ -90,7 +90,7 @@ class HumanPathFollowing(Node):
         self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
         # initialize the controllers
-        self.trans_controller = Controller(0.6, 0.05, 0.0, 1.0, 1.0)
+        self.trans_controller = Controller(0.6, 0.025, 0.0, 1.0, 1.0)
         self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
         # intialize the velocities
         self.wRef = 0.0
@@ -115,6 +115,8 @@ class HumanPathFollowing(Node):
         dx = msg.x
         dy = msg.y
         d_rel = np.array([dx, dy])
+        if self.DEBUG:
+            print("inital reading from msg dx, dy:", dx, dy) # Debugging output for current position relative to the human
 
         # Construction of the path storage
         current_position = self.currentPose[:2] # current position (x,y) of the robot in the world frame
@@ -184,7 +186,9 @@ class HumanPathFollowing(Node):
         self.vRef = 0.0
         self.wRef = 0.0
         
-        if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
+        #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
+        #dx = msg.x
+        if dx > 1.39:
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
         #if self.total_length > 1.3:
         
@@ -249,7 +253,7 @@ class HumanPathFollowing(Node):
                     angle = 0.0
                 
                 self.rot_controller.put(angle)
-                self.trans_controller.put(x)
+                self.trans_controller.put(abs(x-1.5))
 
                 self.rot_controller.run()
                 self.trans_controller.run()
@@ -258,9 +262,11 @@ class HumanPathFollowing(Node):
                 self.wRef = self.rot_controller.get()
                
 
-            if True:
+            if self.path_storage.shape[1]>1:
                 self.path_storage = self.path_storage[:, 1:]
                 #self.path_storage = self.find_forward_points()
+                if self.DEBUG:            
+                    print("Path storage after removal:", self.path_storage)
                 
         else:
             self.vRef = 0.0
@@ -299,9 +305,9 @@ class HumanPathFollowing(Node):
         self.ctrlMsgs.value.left = self.wRef
 
         # publish motion command
-        #self.vel_cmd_publisher_.publish(self.ctrlMsgs)
-        if self.DEBUG:
-            self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
+        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+        #if self.DEBUG:
+        self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
 
 ## ======== srart of helper functions ==========
 
@@ -469,7 +475,7 @@ class Pose:
 
 def main(args=None):
 
-    for i in range(2):
+    for i in range(1):
         print(i)
         time.sleep(1)
 
