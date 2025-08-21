@@ -66,7 +66,7 @@ class PositioningFusion(Positioning):
 
     def fuse_polar(self):
         """Performs sensor fusion on polar coordinates from UWB and Vision sensors."""
-        if self._d_v < 0.1:
+        if self._d_v < 0.31: #0.1: change to 0.31 because of the OFFSET_X_VISION 
             # Vision sensor doesn't detect; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u
