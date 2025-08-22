@@ -174,7 +174,7 @@ class PositioningVisionHuman(Positioning):
 
         # camera matrix used after undistortion of image
         new_K = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
-            PositioningVisionHuman.K, PositioningVisionHuman.D, self.resolution, np.eye(3), options.get('balance', 1)
+            PositioningVisionHuman.K, PositioningVisionHuman.D, self.resolution, np.eye(3), balance = 1.0#options.get('balance', 1)
             )    
         
         # mapping constants for undistortion of camera image
@@ -187,6 +187,18 @@ class PositioningVisionHuman(Positioning):
         self.f_y = new_K[1,1]	# focal length in y [pixel]
         self.c_x = new_K[0,2]	# x coordinate of optical center [pixel] 
         self.c_y = new_K[1,2]	# y coordinate of optical center [pixel]
+
+        print(CALIBRATION_PATH)
+        print(PositioningVisionHuman.K)
+        print(PositioningVisionHuman.D)
+        print("==== new k======")
+        print(self.resolution)
+        print(new_K)
+
+        print(self.f_x)
+        print(self.f_y)
+        print(self.c_y)
+        print(self.mapx[:5,:5])
 
         # framerate time
         self.pre_f_time = 0
@@ -262,7 +274,6 @@ class PositioningVisionHuman(Positioning):
             # create array and append to matched tracks
             match = np.array([t_x0, t_y0, t_x1, t_y1, t_id, o_id, o_score]).reshape((1, 7))
             self.matched_tracks = np.append(self.matched_tracks, match, axis=0)
-
 
 
     def draw_tracks_on_frame(self, frame):
@@ -397,7 +408,8 @@ class PositioningVisionHuman(Positioning):
             X = statistics.median(self.x_history)
             Z = float(P_c_2d_hom_corrected[1])
             self.z_history.appendleft(Z)
-            Z = statistics.median(self.z_history)        
+            Z = statistics.median(self.z_history)   
+            #print(Z)     
             
             self._distance = np.sqrt(Z**2 + X**2)
             
