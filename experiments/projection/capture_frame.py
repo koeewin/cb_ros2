@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 
 # --- Edit these paths to your calibration files ---
-CALIBRATION_PATH = r"C:\path\to\your\camera-calibration\calibration-results"  # contains K*.npy and D*.npy
+CALIBRATION_PATH = r"/home/cb/Desktop/cb_workspace/src/cb_ros2/cb_positioning/cb_positioning/positioning_utils/camera-parameters-human"  # contains K*.npy and D*.npy
 # LABEL_PATH = r"C:\path\to\labels\coco_labels.txt"  # not used here, kept for your reference
 
 # --- Camera settings ---
