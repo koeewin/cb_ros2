@@ -351,13 +351,15 @@ class PositioningVisionHuman(Positioning):
 
         return frame
     
-    def estimate_angle_and_distance(self, frame):   
+    def estimate_angle_and_distance(self, frame, pitch_deg=0):   
         """
         @brief Estimates human position (angle and distance) from the camera.
         @param frame Current image frame.
         @return True if a human is detected; False otherwise.
         """
-          
+        # << set your tilt angle here (positive = camera pitched downward)
+        theta = np.deg2rad(pitch_deg) # deg to rad
+        
 
         # format frame
         frameHuman = self.calib_frame(frame.copy())         
@@ -396,9 +398,21 @@ class PositioningVisionHuman(Positioning):
             self.uM = int(0.5 * (u4 + u1)) # horizontal center of bbox
             self.vM = int(v4)
             
+            #1. Normalize pixel coordinates
+            a = (self.uM - self.c_x) / self.f_x
+            b = (self.vM - self.c_y) / self.f_y
+            # Tilt-only ground intersection (y=0), sign convention matches your zero-tilt formulas
+            den = b * np.cos(theta) - np.sin(theta)
+            eps = 1e-9
+            if np.any(np.abs(den) < eps):
+                print("Warning: some points are near the horizon (denominator ~ 0). Results may be unstable.")  
+            Y_c = self.height_camera
+            Z_c = Y_c * (b * np.sin(theta) + np.cos(theta)) / den
+            X_c = Y_c * a / den
+            # --------------  old implementation without tilt --------------
             # 3D Point in camera coordinates P_c = [X_c, h_c, Z_c], calculated from pixel coordinates and projection equations
-            Z_c = self.f_y * self.height_camera / (self.vM - self.c_y)
-            X_c = (self.uM - self.c_x) * Z_c / self.f_x
+            #Z_c = self.f_y * self.height_camera / (self.vM - self.c_y)
+            #X_c = (self.uM - self.c_x) * Z_c / self.f_x
             
             P_c_2d_hom = np.array([X_c, Z_c, 1])            # 2d (plane on the floor), homogeneous representation of 3d world point for transformation 
             P_c_2d_hom_corrected = np.matmul(PositioningVisionHuman.A,P_c_2d_hom)  # apply affine transform for additional correction

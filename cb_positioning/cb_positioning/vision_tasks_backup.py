@@ -23,7 +23,6 @@ from rclpy.node import Node
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from cb_interfaces.msg import PositioningData
-from ception_msgs.msg import IMUEuler
 
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
@@ -77,21 +76,12 @@ class VisionTasks(Node):
         @brief Constructor initializing publishers, broadcasters, threads, camera and other instance variables.
         """
         super().__init__('vision_tasks')  
-        
-        # ---- Subscriptions ----
-        self.sub_uwb = self.create_subscription(
-            IMUEuler, '/diablo/sensor/ImuEuler', self.read_angle, 10)
-        self.tilt_deg = 0  # << set your tilt angle here (positive = camera pitched downward)
-
 
         ##  @name Publishers
         #   @{
 
         ## Publishes the human position to the `human/positionVision` message topic.
         self.position_vision_pub = self.create_publisher(PositioningData, 'human/positionVision', 10)
-
-    
-
 
         ## Publishes the AprilTag landmarks to the `/landmark` message topic.
         #self.landmark_pub = self.create_publisher(Marker, '/landmark', 2)       
@@ -230,23 +220,7 @@ class VisionTasks(Node):
     ##  @name Thread Callbacks
     #   Callbacks used by the three main threads: the @ref update_thread, the @ref apriltag_thread and the @ref human_thread.
     #   @{
-    def read_angle(self, msg: IMUEuler):
-        """
-        Store current camera pitch angle in *degrees*.
-        Assumes msg.pitch is Euler pitch (x-rotation). If your IMU publishes radians,
-        we convert to degrees; if it already publishes degrees, we keep as-is.
-        """
-        pitch = msg.pitch
 
-        # Heuristic: convert to degrees if it looks like radians
-        if abs(pitch) <= math.pi + 0.2:   # small guard margin
-            pitch_deg = math.degrees(pitch)
-        else:
-            pitch_deg = pitch
-
-        with self.lock:
-            self.tilt_deg = float(pitch_deg)
-            
     def update(self):
         """
         @brief  Continuously retrieves and updates frames from the camera stream in the @ref update_thread thread.
@@ -428,8 +402,7 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = self.tilt_deg
-                self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now)
+                self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame)
                 self.human_newframe_processed = True
             
                 vision_msg = PositioningData()
