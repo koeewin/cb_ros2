@@ -143,7 +143,8 @@ class PositioningVisionHuman(Positioning):
 
     # Transformation matrix (affine transform) for additional correction
     #A = np.array([[1.02525856, 0.03633815, -0.00136207], [-0.03460797, 1.03667567, -0.14860082]])
-    A = np.array([[0.99200969,  0.04426096, -0.01890215],[-0.01694236,  1.00300579, -0.01041375]])
+    #A = np.array([[0.99200969,  0.04426096, -0.01890215],[-0.01694236,  1.00300579, -0.01041375]])
+    A = np.array([[ 9.574622e-01, -4.483123e-04, -3.153550e-02],[ 1.313029e-02,  9.948254e-01, -1.896732e-02]]) #global affine transform
 
     def __init__(self, height_camera, **options):
         """
@@ -296,8 +297,8 @@ class PositioningVisionHuman(Positioning):
                 for track in self.matched_tracks:
                     track = track.copy()
                     # format box text
-                    print('id current =', track[4].item())
-                    print(track[4].item()== follow_id)
+                    #print('id current =', track[4].item())
+                    #print(track[4].item()== follow_id)
                     #print('Follow ID = ', follow_id)
                     if track[4].item() == follow_id:
                         score = track[6].item()
@@ -359,8 +360,7 @@ class PositioningVisionHuman(Positioning):
         @return True if a human is detected; False otherwise.
         """
         # << set your tilt angle here (positive = camera pitched downward)
-        theta = pitch
-        phi = roll
+
         
 
         # format frame
@@ -399,6 +399,10 @@ class PositioningVisionHuman(Positioning):
             # M is point on lower edge of bbox, it is centered horizontally on this edge
             self.uM = int(0.5 * (u4 + u1)) # horizontal center of bbox
             self.vM = int(v4)
+
+            #------ Reprojection to 3D point in world coordinates ------
+            theta = pitch
+            phi = roll
             
             #1. Normalize pixel coordinates
             a = (self.uM - self.c_x) / self.f_x
@@ -416,8 +420,6 @@ class PositioningVisionHuman(Positioning):
             dwy = y1 * cos_t - sin_t
             dwz = y1 * sin_t + cos_t
 
-
-
             # 3) Ray–plane intersection with ground y=0
             #    Camera center C = (cam_X, -Y_c, cam_Z); solve -Y_c + λ*dwy = 0 => λ = Y_c / dwy
             eps = 1e-9
@@ -432,11 +434,7 @@ class PositioningVisionHuman(Positioning):
             # Ground intersection in world coordinates (same axes as camera: x right, y down, z forward)
             X_c = cam_X + lam * dwx
             Z_c = cam_Z + lam * dwz
-# ------------------------------------------------------------
-            # --------------  old implementation without tilt --------------
-            # 3D Point in camera coordinates P_c = [X_c, h_c, Z_c], calculated from pixel coordinates and projection equations
-            #Z_c = self.f_y * self.height_camera / (self.vM - self.c_y)
-            #X_c = (self.uM - self.c_x) * Z_c / self.f_x
+
             
             P_c_2d_hom = np.array([X_c, Z_c, 1])            # 2d (plane on the floor), homogeneous representation of 3d world point for transformation 
             P_c_2d_hom_corrected = np.matmul(PositioningVisionHuman.A,P_c_2d_hom)  # apply affine transform for additional correction

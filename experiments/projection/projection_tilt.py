@@ -28,7 +28,7 @@ calibration_path = r'C:\Users\zhang\Documents\CarrierBot\Diablo Robot\1_Software
 K_files = glob.glob(os.path.join(calibration_path, 'K*.npy'))
 D_files = glob.glob(os.path.join(calibration_path, 'D*.npy'))
 if not K_files or not D_files:
-    raise FileNotFoundError("No K*.npy or D*.npy found in calibration_path.")
+    raise FileNotFoundError("No K*.npy or D*.npy found in calibrationgit_path.")
 
 K_raw = np.load(K_files[0])
 D = np.load(D_files[0])

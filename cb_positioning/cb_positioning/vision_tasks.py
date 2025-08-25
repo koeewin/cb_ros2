@@ -46,7 +46,11 @@ except ImportError:
 
 
 ## The height of the camera measured from the ground
-CAMERA_HEIGHT = 0.52 
+CAMERA_HEIGHT = 0.52
+PITCH_REFERENCE = -0.032 #Rad    Just the Reading form ROS2 MSG
+ROLL_REFERENCE  = 0.0045 #Rad
+PITCH_CORRECTION = 0.095 #Rad
+ROLL_CORRECTION  = 0.005 #Rad
 
 ## Camera source
 # 
@@ -242,7 +246,7 @@ class VisionTasks(Node):
 
         with self.lock:
             self.tilt = float(pitch)
-            self.roll = 0#float(roll)
+            self.roll = float(roll)
             
     def update(self):
         """
@@ -425,12 +429,10 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = -self.tilt#-(self.tilt+0.034-0.071) #+0.028 for deviation from zero, -0.071 for calibration
-                    roll_now = 0.0
+                    tilt_now = -(-self.tilt-PITCH_REFERENCE+PITCH_CORRECTION) # camera pitch downward is positive
+                    roll_now = -(self.roll-ROLL_REFERENCE+ROLL_CORRECTION)  # camera roll right is positive
                 self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
-                print("------------------------------------")
-                print(tilt_now)
-                print(roll_now)
+                
                 self.human_newframe_processed = True
             
                 vision_msg = PositioningData()
