@@ -242,7 +242,7 @@ class VisionTasks(Node):
 
         with self.lock:
             self.tilt = float(pitch)
-            self.roll = float(roll)
+            self.roll = 0#float(roll)
             
     def update(self):
         """
@@ -425,7 +425,7 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = self.tilt+0.028
+                    tilt_now = self.tilt+0.028-0.071 #+0.028 for deviation from zero, -0.071 for calibration
                     roll_now = self.roll
                 self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
                 print("------------------------------------")

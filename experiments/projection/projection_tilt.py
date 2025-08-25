@@ -8,7 +8,7 @@ Robot_Model = "Diablo"
 # True marker positions
 m_X = np.array([0,0,0,0,-0.5,-0.5,-0.5,-0.5,-1,-1,-1,-1,0.5,0.5,0.5,0.5,1,1,1,1])
 if Robot_Model == "Diablo":
-    m_Z = np.array([0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2]) + 0.225
+    m_Z = np.array([0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2]) + 0.180
 else:
     m_Z = np.array([0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2,0.5,1,1.5,2])
 
@@ -17,8 +17,8 @@ width, height = 640, 480
 balance = 1.0
 
 if Robot_Model == "Diablo":
-    m_u = np.array([328, 328, 328, 328, 168, 236, 262, 277,  12, 141, 196, 226, 480, 417, 391, 377, 621, 503, 454, 426])
-    m_v = np.array([397, 334, 309, 293, 403, 335, 309, 294, 397, 334, 308, 293, 393, 332, 307, 292, 382, 329, 305, 291])
+    m_u = np.array([330, 328, 328, 328, 167, 236, 263, 277,   9, 140, 195, 226, 483, 419, 391, 377, 623, 504, 455, 426])
+    m_v = np.array([402, 338, 312, 297, 409, 339, 312, 297, 403, 339, 311, 296, 397, 336, 310, 296, 385, 332, 308, 294])
 else:
     m_u = np.array([327, 327, 327, 327, 150, 230, 260, 276,   1, 127, 190, 223, 495, 423, 393, 378, 640, 513, 459, 429])
     m_v = np.array([425, 354, 326, 311, 429, 355, 326, 311, 429, 357, 327, 311, 420, 353, 325, 311, 413, 351, 324, 311])
@@ -39,11 +39,11 @@ f_x, f_y = K[0,0], K[1,1]
 c_x, c_y = K[0,2], K[1,2]
 
 # Camera height
-Y_c = 0.51  # [m]
+Y_c = 0.52  # [m]
 
 # -------- Introduce tilt (pitch) about camera x-axis --------
-pitch_deg = -5 # << set your tilt angle here (positive = camera pitched downward)
-theta = np.deg2rad(pitch_deg) # deg to rad
+pitch_rad = -0.085 # << set your tilt angle here (positive = camera pitched downward)
+theta = pitch_rad # deg to rad
 
 #1. Normalize pixel coordinates
 a = (m_u - c_x) / f_x
