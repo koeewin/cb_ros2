@@ -81,7 +81,8 @@ class VisionTasks(Node):
         # ---- Subscriptions ----
         self.sub_uwb = self.create_subscription(
             IMUEuler, '/diablo/sensor/ImuEuler', self.read_angle, 10)
-        self.tilt_deg = 0  # << set your tilt angle here (positive = camera pitched downward)
+        self.tilt = 0  # << set your tilt angle here (positive = camera pitched downward in RAD)
+        self.roll = 0  # << set your roll angle here (positive = camera rolled right in RAD)
 
 
         ##  @name Publishers
@@ -237,15 +238,11 @@ class VisionTasks(Node):
         we convert to degrees; if it already publishes degrees, we keep as-is.
         """
         pitch = msg.pitch
-
-        # Heuristic: convert to degrees if it looks like radians
-        if abs(pitch) <= math.pi + 0.2:   # small guard margin
-            pitch_deg = math.degrees(pitch)
-        else:
-            pitch_deg = pitch
+        roll = msg.roll
 
         with self.lock:
-            self.tilt_deg = float(pitch_deg)
+            self.tilt = float(pitch)
+            self.roll = float(roll)
             
     def update(self):
         """
@@ -428,8 +425,9 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = self.tilt_deg
-                self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now)
+                    tilt_now = self.tilt
+                    roll_now = self.roll
+                self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
                 self.human_newframe_processed = True
             
                 vision_msg = PositioningData()

@@ -351,14 +351,15 @@ class PositioningVisionHuman(Positioning):
 
         return frame
     
-    def estimate_angle_and_distance(self, frame, pitch_deg=0):   
+    def estimate_angle_and_distance(self, frame, pitch=0, roll=0):   
         """
         @brief Estimates human position (angle and distance) from the camera.
         @param frame Current image frame.
         @return True if a human is detected; False otherwise.
         """
         # << set your tilt angle here (positive = camera pitched downward)
-        theta = np.deg2rad(pitch_deg) # deg to rad
+        theta = pitch
+        phi = roll
         
 
         # format frame
@@ -402,13 +403,35 @@ class PositioningVisionHuman(Positioning):
             a = (self.uM - self.c_x) / self.f_x
             b = (self.vM - self.c_y) / self.f_y
             # Tilt-only ground intersection (y=0), sign convention matches your zero-tilt formulas
-            den = b * np.cos(theta) - np.sin(theta)
+            # 2) Rotate camera ray by R = R_x(theta) @ R_z(-phi)
+            #    (minus sign on roll makes roll-left positive in this y-down convention)
+            cos_phi, sin_phi = np.cos(phi), np.sin(phi)
+            x1 = a * cos_phi + b * sin_phi
+            y1 = -a * sin_phi + b * cos_phi
+            # z1 = 1  (implicit)
+
+            cos_t, sin_t = np.cos(theta), np.sin(theta)
+            dwx = x1
+            dwy = y1 * cos_t - sin_t
+            dwz = y1 * sin_t + cos_t
+
+
+
+            # 3) Ray–plane intersection with ground y=0
+            #    Camera center C = (cam_X, -Y_c, cam_Z); solve -Y_c + λ*dwy = 0 => λ = Y_c / dwy
             eps = 1e-9
-            if np.any(np.abs(den) < eps):
-                print("Warning: some points are near the horizon (denominator ~ 0). Results may be unstable.")  
-            Y_c = self.height_camera
-            Z_c = Y_c * (b * np.sin(theta) + np.cos(theta)) / den
-            X_c = Y_c * a / den
+            if np.any(np.abs(dwy) < eps):
+                print("Warning: some rays are near the horizon (denominator ~ 0).")
+            # --- Camera pose (world frame with y pointing DOWN) ---
+            Y_c   = self.height_camera       # height above ground [m] (positive)
+            cam_X = 0.0         # camera world X position [m]
+            cam_Z = 0.0         # camera world Z position [m]
+            lam = Y_c / dwy
+
+            # Ground intersection in world coordinates (same axes as camera: x right, y down, z forward)
+            X_c = cam_X + lam * dwx
+            Z_c = cam_Z + lam * dwz
+# ------------------------------------------------------------
             # --------------  old implementation without tilt --------------
             # 3D Point in camera coordinates P_c = [X_c, h_c, Z_c], calculated from pixel coordinates and projection equations
             #Z_c = self.f_y * self.height_camera / (self.vM - self.c_y)
