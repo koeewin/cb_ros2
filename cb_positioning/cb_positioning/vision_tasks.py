@@ -425,9 +425,12 @@ class VisionTasks(Node):
             if not self.human_newframe_processed:
                 with self.lock:
                     frame = self.frame.copy()
-                    tilt_now = self.tilt
+                    tilt_now = self.tilt+0.028
                     roll_now = self.roll
                 self.human_detected = self.positioningVisionHuman.estimate_angle_and_distance(frame, tilt_now, roll_now)
+                print("------------------------------------")
+                print(tilt_now)
+                print(roll_now)
                 self.human_newframe_processed = True
             
                 vision_msg = PositioningData()
