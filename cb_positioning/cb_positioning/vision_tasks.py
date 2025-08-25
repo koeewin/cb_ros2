@@ -46,7 +46,7 @@ except ImportError:
 
 
 ## The height of the camera measured from the ground
-CAMERA_HEIGHT = 0.51 
+CAMERA_HEIGHT = 0.52 
 
 ## Camera source
 # 
