@@ -17,7 +17,7 @@ ONE_OVER_SIGMA_D_VISION_SQUARED = 3743
 
 
 class PositioningFusion(Positioning):
-    D_STOP = 0.6  # Class attribute
+    D_STOP = 0.65  # Class attribute
 
     def __init__(self, **options):
         """
@@ -74,7 +74,7 @@ class PositioningFusion(Positioning):
             # Significant angle difference; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u
-        elif self._d_v < 0.46:
+        elif self._d_v < self.D_STOP:
             # Operator is too close to the camera; stop the robot
             self._distance = self.D_STOP / 2
             self._angle = 0

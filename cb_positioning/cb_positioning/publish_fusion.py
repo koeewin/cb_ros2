@@ -43,8 +43,8 @@ class Fusion(Node):
     def fuse(self):
         with self.lock:
             # Considering offsets for UWB and Vision data
-            OFFSET_X_UWB = -0.1
-            OFFSET_X_VISION = 0.135
+            OFFSET_X_UWB = -0.10
+            OFFSET_X_VISION = 0.15
 
             uwb_pos = self.uwb_pos
             vision_pos = self.vision_pos
