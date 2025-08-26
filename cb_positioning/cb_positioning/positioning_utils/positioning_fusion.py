@@ -17,7 +17,7 @@ ONE_OVER_SIGMA_D_VISION_SQUARED = 3743
 
 
 class PositioningFusion(Positioning):
-    D_STOP = 0.65  # Class attribute
+    D_STOP = 0.85  # Class attribute
 
     def __init__(self, **options):
         """
@@ -66,7 +66,7 @@ class PositioningFusion(Positioning):
 
     def fuse_polar(self):
         """Performs sensor fusion on polar coordinates from UWB and Vision sensors."""
-        if self._d_v < 0.31: #0.1: change to 0.31 because of the OFFSET_X_VISION 
+        if self._d_v < 0.80: # 
             # Vision sensor doesn't detect; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u
@@ -74,10 +74,10 @@ class PositioningFusion(Positioning):
             # Significant angle difference; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u
-        elif self._d_v < self.D_STOP:
-            # Operator is too close to the camera; stop the robot
-            self._distance = self.D_STOP / 2
-            self._angle = 0
+        # elif self._d_v < self.D_STOP:
+        #     # Operator is too close to the camera; stop the robot
+        #     self._distance = self.D_STOP / 2
+        #     self._angle = 0
         elif self._d_v > 30:
             # Operator is too far from the camera; slow down
             self._distance = self.D_STOP / 3
