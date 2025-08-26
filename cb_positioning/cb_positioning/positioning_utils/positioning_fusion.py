@@ -70,7 +70,7 @@ class PositioningFusion(Positioning):
             # Vision sensor doesn't detect; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u
-        elif abs(self._phi_u - self._phi_v) > 0.5:
+        elif abs(self._phi_u - self._phi_v) > 1.0:
             # Significant angle difference; rely on UWB
             self._distance = self._d_u
             self._angle = self._phi_u

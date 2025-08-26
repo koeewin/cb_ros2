@@ -43,7 +43,7 @@ class MultiTopicRecorder(Node):
         self.latest_f = {'x': None, 'y': None}
 
         # ---- Recording buffer (600 x 12) ----
-        self.max_rows = 600
+        self.max_rows = 300
         self.buffer = np.zeros((self.max_rows, 12), dtype=float)
         self.row_idx = 0
         self.recording = False
@@ -98,11 +98,17 @@ class MultiTopicRecorder(Node):
             phi_v, d_v, x_v, y_v,
             phi_f, d_f, x_f, y_f
         ], dtype=float)
+        
+        row_print = np.array([
+            x_u, y_u,
+            x_v, y_v,
+            x_f, y_f
+        ], dtype=float)
 
         self.buffer[self.row_idx, :] = row
         self.row_idx += 1
         # ---- PRINT in one line ----
-        print("\t".join(f"{v:.2f}" for v in row))
+        print("\t".join(f"{v:.2f}" for v in row_print))
 
         # Stop and save when we've reached 600 rows
         if self.row_idx >= self.max_rows:

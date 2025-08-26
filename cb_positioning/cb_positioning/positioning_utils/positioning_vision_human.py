@@ -144,7 +144,7 @@ class PositioningVisionHuman(Positioning):
     # Transformation matrix (affine transform) for additional correction
     #A = np.array([[1.02525856, 0.03633815, -0.00136207], [-0.03460797, 1.03667567, -0.14860082]])
     #A = np.array([[0.99200969,  0.04426096, -0.01890215],[-0.01694236,  1.00300579, -0.01041375]])
-    A = np.array([[ 9.574622e-01, -4.483123e-04, -3.153550e-02],[ 1.313029e-02,  9.948254e-01, -1.896732e-02]]) #global affine transform
+    A = np.array([[ 1.00127577, -0.01408923,  0.00828391],[ -0.14494687,  0.95691949,  0.12407612]]) # affine transform
 
     def __init__(self, height_camera, **options):
         """
