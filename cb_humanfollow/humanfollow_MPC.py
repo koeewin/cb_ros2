@@ -19,6 +19,8 @@ from motion_msgs.msg import LegMotors  # Adjust this to the correct import path
 from loess.loess_1d import loess_1d
 from Paths.path import gen_path, arclength
 import warnings
+import threading
+from rclpy.time import Time
 
 
 class HumanPathFollowing(Node):
@@ -29,17 +31,11 @@ class HumanPathFollowing(Node):
         self.first_time = True  # Flag to send mode_mark on first command 
 
         # Choose self.control method
-        self.control = "PID0"  # Options: MPC, PID, PID0
+        self.control = "MPC"  # Options: MPC, PID, PID0
         self.d_follow = 1.36  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
         self.odom_msg = Odometry()
-
-        self.robot = Robot()  # Initialize the robot instance here
-        # Initialize previous wheel positions
-        self.prev_left_wheel_pos = None
-        self.prev_right_wheel_pos = None
-
 
         # Define differential drive kinematics parameters
         R = 0.094  # Wheel radius [m]
@@ -49,8 +45,10 @@ class HumanPathFollowing(Node):
         # Simulation parameters
         self.sampleTime = 0.06          # Sample time [s], equals 20 Hz
         initPose = np.array([0, 0, 0])  # Initial pose (x, y, theta) of the robot
-        self.currentPose = initPose
-        self.lastPose = initPose
+        self.currentPose = initPose.copy()
+        self.lastPose    = initPose.copy()
+        self.pose_stamp  = Time()   # last odom stamp
+        self.pose_lock   = threading.Lock()
 
         self.path_storage = np.zeros((2, 1))
         self.path_storage_smooth = np.zeros((2, 1))
@@ -119,6 +117,12 @@ class HumanPathFollowing(Node):
         # Orientation (quaternion -> yaw)
         q = msg.pose.pose.orientation
         _, _, theta = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        with self.pose_lock:
+            self.lastPose = self.currentPose.copy()
+            self.currentPose = np.array([x, y, theta], dtype=float)
+            self.pose_stamp = Time.from_msg(msg.header.stamp)
+        
+        
         self.currentPose = np.array([x, y, theta])
 
         # Log values
@@ -133,28 +137,31 @@ class HumanPathFollowing(Node):
         start_time = time.time()
 
         # Update the odometry message with the current pose from parallel thread
-        self.lastPose = self.currentPose
-
-        self.currentPose = np.array([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, self.odom_msg.pose.pose.orientation.z])
+        # Safely read a consistent snapshot
+        with self.pose_lock:
+            currentPose = self.currentPose.copy()
+            lastPose    = self.lastPose.copy()
+            pose_stamp   = self.pose_stamp
         if self.DEBUG:
-            print("Current Pose:", self.currentPose)
+            print("Current Pose:", currentPose)
 
         # receive the human position from the message
         dx = msg.x
         dy = msg.y
         d_rel = np.array([dx, dy])
+
         if self.DEBUG:
             print("inital reading from msg dx, dy:", dx, dy) # Debugging output for current position relative to the human
 
         # Construction of the path storage
-        current_position = self.currentPose[:2] # current position (x,y) of the robot in the world frame
-        last_position = self.lastPose[:2]       # last position (x,y) of the robot in the world frame 
+        current_position = currentPose[:2] # current position (x,y) of the robot in the world frame
+        last_position = lastPose[:2]       # last position (x,y) of the robot in the world frame 
         
         # Following three lines are to find current_T_last, first find 
         # current_Translation_last: Position (x,y) of the last pose w.r.t. the current pose in the current frame
-        current_position_last = - np.linalg.inv(Rz(self.currentPose[2])) @ np.append((current_position - last_position), 1) 
+        current_position_last = - np.linalg.inv(Rz(currentPose[2])) @ np.append((current_position - last_position), 1) 
         # construct the current_pose_last: [x,y,theta] in the current frame
-        angle_diff = math.atan2(math.sin(self.lastPose[2] - self.currentPose[2]), math.cos(self.lastPose[2] - self.currentPose[2]))
+        angle_diff = math.atan2(math.sin(lastPose[2] - currentPose[2]), math.cos(lastPose[2] - currentPose[2]))
         current_pose_last = np.append(current_position_last[:2], angle_diff)
         # current_T_last
         current_T_last = Tz(current_pose_last[2], current_pose_last)
@@ -174,7 +181,6 @@ class HumanPathFollowing(Node):
             self.path_storage = transformed[:2, :]
             #print("Final path_storage shape:", self.path_storage.shape)
         else: 
-            print("path_storage is empty, skipping transform.")
             warnings.warn("path_storage is empty, skipping transform.")
             return
         
@@ -330,7 +336,7 @@ class HumanPathFollowing(Node):
         self.ctrlMsgs.value.left = self.wRef
 
         # publish motion command
-        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+        #self.vel_cmd_publisher_.publish(self.ctrlMsgs)
         #if self.DEBUG:
         self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
 
@@ -429,38 +435,6 @@ class Controller:
         self._xI = 0.0
         self._xP = 0.0
 
-class Robot:
-    _R_WHEEL = 0.094
-    _D_WHEEL = 0.482
-
-    def __init__(self):
-        self.Pose = Pose(0, 0, 0)
-        self.tol = np.finfo(float).eps
-
-    def updateOdometry(self, left_wheel_pos, right_wheel_pos):
-        
-        ds_left = self._R_WHEEL * left_wheel_pos
-        ds_right = self._R_WHEEL * right_wheel_pos
-        ds = (ds_left + ds_right) / 2
-        dtheta = (ds_right - ds_left) / self._D_WHEEL
-        ct = math.cos(self.Pose.theta)
-        st = math.sin(self.Pose.theta)
-
-        if abs(ct) < self.tol:
-            ct = 0
-        if abs(st) < self.tol:
-            st = 0
-
-        self.Pose.x += ds * ct
-        self.Pose.y += ds * st
-        self.Pose.theta += dtheta
-
-
-class Pose:
-    def __init__(self, x, y, theta):
-        self.x = x
-        self.y = y
-        self.theta = theta
 
 def main(args=None):
 
