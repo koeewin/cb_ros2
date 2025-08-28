@@ -105,7 +105,7 @@ class DiabloOdometry(Node):
         # Broadcast the transform
         self.tf_broadcaster.sendTransform(transform_stamped)
 
-        position = odom_msg.pose.pose.position
+        #position = odom_msg.pose.pose.position
         # self.get_logger().info(f'Position - x: {odom_msg.twist.twist.linear.x}, y: {position.y}, z: {odom_msg.twist.twist.angular.z}')
 
 
