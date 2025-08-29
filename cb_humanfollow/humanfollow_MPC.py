@@ -50,6 +50,7 @@ class HumanPathFollowing(Node):
         self.pose_lock   = threading.Lock()
 
         self.path_storage = np.zeros((2, 1))
+        self.path_for_mpc = np.zeros((2, 1))
         self.path_storage_smooth = np.zeros((2, 1))
         self.total_length = 0.0
 
@@ -59,10 +60,12 @@ class HumanPathFollowing(Node):
         self.omega_max = np.pi/4.0
         self.v_min = 0.0
         self.omega_min = -self.omega_max
+        self.MPC_Horizon = 5  # Prediction horizon for MPC
+       
 
         # === Setup MPC if selected ===
         if self.control == "MPC":
-            N = 5
+            N = self.MPC_Horizon
             u = np.zeros((N, 2))
 
             self.optimizeProblem = MpcOptimizer(N, self.sampleTime, u,
@@ -208,19 +211,37 @@ class HumanPathFollowing(Node):
             print("Length of path storage:", lenpathstorage)
             print("Path storage with new points:", self.path_storage)
        
-        # Path storage condition for adding new points:
-        if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
-            if dist2laststorage > 2e-2 and (dist2human > 1.0 or lenpathstorage > 1.5):
+        # Path storage condition for adding new points at the end of the path storage:
+        if self.path_storage.shape[1] > 0 :  # es gibt schon gespeicherte Punkte und nicht zu viele
+            if dist2laststorage > 2e-2 and (dist2human > self.d_stop or lenpathstorage > 1.5) and self.path_storage.shape[1] <= self.numPos:
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
+        if  self.path_storage.shape[1] > self.numPos: # zu viele Punkte, entferne den ältesten
+            self.path_storage = self.path_storage[:, -self.numPos]
+        
+        # preprocess path storage for MPC
+        path_for_mpc = self.path_storage.copy()
+        n_cols = path_for_mpc.shape[1]
+        if n_cols  <  self.MPC_Horizon: # If shorter, pad with last column
+            last_col = path_for_mpc[:, -1].reshape(2, 1) # Take the last column
+            repeat_cols = self.MPC_Horizon - n_cols # Repeat it enough times
+            pad = np.repeat(last_col, repeat_cols, axis=1)
+            path_for_mpc = np.hstack([path_for_mpc, pad])  # Stack with the original
+        elif n_cols > self.MPC_Horizon:
+            # If longer, trim to horizon
+            path_for_mpc = path_for_mpc[:, :self.MPC_Horizon]
 
-        print("Path storage before controller:", self.path_storage)
+        # Now guaranteed shape is (2, self.MPC_Horizon)
+        assert path_for_mpc.shape == (2, self.MPC_Horizon)
+        print("Path Storage:", self.path_storage)
+        print("Path for MPC:", path_for_mpc)
+
         #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
         self.wRef = 0.0
         
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
     
-        if np.linalg.norm(d_rel[:2]) > self.d_stop:
+        if dist2human > self.d_stop:
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
         #if self.total_length > 1.3:
         
@@ -238,12 +259,12 @@ class HumanPathFollowing(Node):
                 print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
             
             
-            self.control = "MPC"
+            #self.control = "MPC"
             # preprocess the path storage with loess smoothing and resampling for MPC
-            if self.control == "MPC":
-                x_pathpoints = self.path_storage[0,:]
-                y_pathpoints = self.path_storage[1,:]
-                x_interp = np.linspace(np.min(x_pathpoints), np.max(x_pathpoints), 10)
+            # if self.control == "MPC":
+            #     x_pathpoints = self.path_storage[0,:]
+            #     y_pathpoints = self.path_storage[1,:]
+            #     x_interp = np.linspace(np.min(x_pathpoints), np.max(x_pathpoints), 10)
 
                 #if len(np.unique(x_pos)) < 3:
                 #    print("Skipping LOESS: not enough unique x values")
@@ -256,22 +277,24 @@ class HumanPathFollowing(Node):
                 #print(self.path_storage_smooth)
                 #print(self.path_storage_smooth.shape[0])
                 #print(self.path_storage_smooth.shape[1])
-            N = 5
-            if self.path_storage_smooth.shape[0] >= self.numPos:
-                self.control = "MPC"
-                print("Ensuring MPC is possible")
-            else:
-                self.control = "PID"
+            
+            # if self.path_storage_smooth.shape[0] >= self.numPos: 
+            #     self.control = "MPC"
+            #     print("Ensuring MPC is possible")
+            # else:
+            #     self.control = "PID"
 
           
-            if dx > self.d_follow: # perform the path following control using either MPC or PID
+            if dist2human > self.d_follow: # perform the path following control using either MPC or PID
                 print("STATE ===> Follow the human") 
                 if self.control == "MPC":
                     print("STATE ===> Follow the human=====>MPC") 
                     # Perform MPC optimization
                     #st = time.time()
                     #self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
-                    self.optimizeProblem.solve_problem(self.path_storage, [self.vRef,self.wRef])
+                    v_last = self.ctrlMsgs.value.forward
+                    w_last = self.ctrlMsgs.value.left
+                    self.optimizeProblem.solve_problem(path_for_mpc, [v_last,w_last]) # this shopud be the last velocity
                     #print(time.time() - st)
                     self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
                     self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
@@ -300,28 +323,27 @@ class HumanPathFollowing(Node):
                 if self.path_storage.shape[1]>1:
                     self.path_storage = self.path_storage[:, 1:]
                     #self.path_storage = self.find_forward_points()
-                    if self.DEBUG:            
-                        print("Path storage after removal:", self.path_storage)
+                   
 
-            elif (np.linalg.norm(d_rel[:2])> self.d_stop and np.linalg.norm(d_rel[:2]) < self.d_follow) or dx < self.d_follow: #dx > self.d_stop and dx < self.d_follow: # rotate to finde the human
+            elif (dist2human>= self.d_stop and dist2human <= self.d_follow):#rotate to finde the human
                 print("STATE ===> Rotate to find the human")
                 if abs(angle) <= 0.5:
                     angle = 0.0
                     self.wRef = 0.0
                 else:
                     self.trans_controller.reset()
-                    #self.rot_controller.put(angle)
-                    #self.rot_controller.run()
                     if angle > 0: self.wRef = 0.8
                     else: self.wRef = -0.8
 
                     #self.wRef = self.rot_controller.get()+0.2
                 self.vRef = 0.0
+                self.path_storage = np.zeros((2, 1))
             
-        else:
+        else: # Robot stop
             print("STATE ===> STOP") 
             self.vRef = 0.0
             self.wRef = 0.0
+            self.path_storage = np.zeros((2, 1))
         
                  
 
