@@ -210,10 +210,10 @@ class HumanPathFollowing(Node):
        
         # Path storage condition for adding new points:
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
-            if dist2laststorage > 2e-2 and (dist2human > 1.3 or lenpathstorage > 1.5):
+            if dist2laststorage > 2e-2 and (dist2human > 1.0 or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
 
-            
+        print("Path storage before controller:", self.path_storage)
         #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
         self.wRef = 0.0
@@ -236,33 +236,47 @@ class HumanPathFollowing(Node):
                 angle = 0.0
             if self.DEBUG:
                 print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
-
+            
+            
+            self.control = "MPC"
             # preprocess the path storage with loess smoothing and resampling for MPC
             if self.control == "MPC":
                 x_pathpoints = self.path_storage[0,:]
                 y_pathpoints = self.path_storage[1,:]
                 x_interp = np.linspace(np.min(x_pathpoints), np.max(x_pathpoints), 10)
 
-                if len(np.unique(x_pos)) < 3:
-                    print("Skipping LOESS: not enough unique x values")
+                #if len(np.unique(x_pos)) < 3:
+                #    print("Skipping LOESS: not enough unique x values")
                     # Fallback: einfach Originalwerte benutzen
-                    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = x_pathpoints, y_pathpoints, None
-                else:
-                    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = loess_1d(x_pathpoints, y_pathpoints, x_interp, frac=0.5, degree=1)
+                #    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = x_pathpoints, y_pathpoints, None
+                #else:
+                #    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = loess_1d(x_pathpoints, y_pathpoints, x_interp, frac=0.5, degree=1)
                 
-                self.path_storage_smooth = np.row_stack((x_pathpoints_smoothed, x_pathpoints_smoothed))
-           
-                
+                #self.path_storage_smooth = np.row_stack((x_pathpoints_smoothed, x_pathpoints_smoothed))
+                #print(self.path_storage_smooth)
+                #print(self.path_storage_smooth.shape[0])
+                #print(self.path_storage_smooth.shape[1])
+            N = 5
+            if self.path_storage_smooth.shape[0] >= self.numPos:
+                self.control = "MPC"
+                print("Ensuring MPC is possible")
+            else:
+                self.control = "PID"
+
+          
             if dx > self.d_follow: # perform the path following control using either MPC or PID
                 print("STATE ===> Follow the human") 
                 if self.control == "MPC":
+                    print("STATE ===> Follow the human=====>MPC") 
                     # Perform MPC optimization
                     #st = time.time()
-                    self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
+                    #self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
+                    self.optimizeProblem.solve_problem(self.path_storage, [self.vRef,self.wRef])
                     #print(time.time() - st)
                     self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
                     self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
                 elif self.control == "PID":
+                    print("STATE ===> Follow the human=====>PID") 
                     # Perform PID self.control
                     vRef = 3 * np.linalg.norm(self.path_storage[:, 0])  # Linear velocity [m/s]
                     phi = np.arctan2(self.path_storage[1, 0], self.path_storage[0, 0])
@@ -280,6 +294,14 @@ class HumanPathFollowing(Node):
 
                     self.vRef = self.trans_controller.get()
                     self.wRef = self.rot_controller.get()
+                
+
+                ## remove points if follow is run
+                if self.path_storage.shape[1]>1:
+                    self.path_storage = self.path_storage[:, 1:]
+                    #self.path_storage = self.find_forward_points()
+                    if self.DEBUG:            
+                        print("Path storage after removal:", self.path_storage)
 
             elif (np.linalg.norm(d_rel[:2])> self.d_stop and np.linalg.norm(d_rel[:2]) < self.d_follow) or dx < self.d_follow: #dx > self.d_stop and dx < self.d_follow: # rotate to finde the human
                 print("STATE ===> Rotate to find the human")
@@ -295,17 +317,13 @@ class HumanPathFollowing(Node):
 
                     #self.wRef = self.rot_controller.get()+0.2
                 self.vRef = 0.0
-
+            
         else:
             print("STATE ===> STOP") 
             self.vRef = 0.0
             self.wRef = 0.0
         
-        if self.path_storage.shape[1]>1:
-            self.path_storage = self.path_storage[:, 1:]
-                #self.path_storage = self.find_forward_points()
-            if self.DEBUG:            
-                print("Path storage after removal:", self.path_storage)         
+                 
 
         
         #### ======== Publish the motion command ======== ####
