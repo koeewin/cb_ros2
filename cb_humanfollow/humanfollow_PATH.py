@@ -216,7 +216,7 @@ class HumanPathFollowing(Node):
             if dist2laststorage > 5e-2 and (dist2human > self.d_stop or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if  self.path_storage.shape[1] > self.numPos: # zu viele Punkte, entferne den ältesten
-            self.path_storage = self.path_storage[:, -self.numPos]
+            self.path_storage = self.path_storage[:, -self.numPos:]
         
         
         
@@ -234,8 +234,8 @@ class HumanPathFollowing(Node):
 
         # Now guaranteed shape is (2, self.MPC_Horizon)
         assert path_for_mpc.shape == (2, self.MPC_Horizon)
-        print("Path Storage:", self.path_storage)
-        print("Path for MPC:", path_for_mpc)
+        #print("Path Storage:", self.path_storage)
+        #print("Path for MPC:", path_for_mpc)
 
         #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
@@ -326,17 +326,18 @@ class HumanPathFollowing(Node):
                     self.wRef = self.rot_controller.get()
                 
                 elif self.control == "PP":
+                    print("STATE ======>> Follow the human path =====>PP") 
                     path_forward = self.discard_points_behind(self.path_storage, x_eps=0.5)
                     #P_fwd = self.discard_points_behind(self.path_storage, x_eps=0.5)
-
-                    if P_fwd is None or P_fwd.shape[1] == 0:
+                    print("Path for PP:", path_forward)
+                    if path_forward is None or path_forward.shape[1] == 0:
                         # nothing ahead → stop safely
                         vRef, wRef = 0.0, 0.0
                     else:
                         vRef, wRef, target_pt, kappa, idx = self.pure_pursuit(
                             path_forward, 
-                            Ld=0.8,
-                            v_max=1.0,
+                            Ld=1,
+                            v_max=0.8,
                             omega_max=np.pi/1.7
                         )
                     self.vRef = vRef
@@ -344,8 +345,8 @@ class HumanPathFollowing(Node):
                                     
 
                 ## remove points if follow is run
-                if self.path_storage.shape[1]>1:
-                    self.path_storage = self.path_storage[:, 1:]
+                #if self.path_storage.shape[1]>1:
+                #    self.path_storage = self.path_storage[:, 1:]
                     #self.path_storage = self.find_forward_points()
                    
 
@@ -402,6 +403,7 @@ class HumanPathFollowing(Node):
         self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}, time = {(time.time()-start_time):.2f}')
         
 ## ======== srart of helper functions ==========
+    @staticmethod
     def discard_points_behind(path_2xN, x_eps=0.5):
         """
         Keep only points with x >= x_eps (i.e., in front of the robot).
@@ -413,6 +415,7 @@ class HumanPathFollowing(Node):
         mask = path_2xN[0, :] >= x_eps
         return path_2xN[:, mask]
     # ========== pp controller for path following ==========
+    @staticmethod
     def pure_pursuit(path_2xN,
                  Ld=0.8,                 # lookahead distance [m]
                  v_max=1.0,              # max linear speed [m/s]

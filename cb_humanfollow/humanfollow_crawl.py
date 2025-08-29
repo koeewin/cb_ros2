@@ -28,7 +28,7 @@ class HumanPathFollowing(Node):
 
         # Choose self.control method
         self.control = "PID0"  # Options: MPC, PID, PID0
-        self.d_follow = 1.36  # Distance to follow the human in meters
+        self.d_follow = 1.2  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
         self.odom_msg = Odometry()
@@ -182,6 +182,9 @@ class HumanPathFollowing(Node):
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
             if dist2laststorage > 2e-2 and (dist2human > 1.3 or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
+        if self.path_storage.shape[1] > self.numPos:
+            self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten
+          
 
             
         #self.path_storage = self.find_forward_points()
@@ -212,8 +215,10 @@ class HumanPathFollowing(Node):
                 
                 self.path_storage_smooth = np.row_stack((xout2, yout2))
             else:   # which is PID or PID0
-                x_pos = dx
-                y_pos = dy
+                #x_pos = dx
+                #y_pos = dy
+                x_pos = self.path_storage[0,0]
+                y_pos = self.path_storage[1,0]
 
                 angle = math.atan2(y_pos,x_pos)
                 if abs(angle) <= 0.08:
