@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpc_optimizer import MpcOptimizer
 from transform import body_to_world, Tz, Rz
-from differential_drive import DifferentialDrive
 from  visualize import  Visualize
 from geometry_msgs.msg import Point
 import rclpy
@@ -38,9 +37,9 @@ class HumanPathFollowing(Node):
         self.odom_msg = Odometry()
 
         # Define differential drive kinematics parameters
-        R = 0.094  # Wheel radius [m]
-        L = 0.482  # Wheelbase [m]
-        self.dd = DifferentialDrive(R, L)
+        #R = 0.094  # Wheel radius [m]
+        #L = 0.482  # Wheelbase [m]
+
 
         # Simulation parameters
         self.sampleTime = 0.06          # Sample time [s], equals 20 Hz
@@ -99,7 +98,7 @@ class HumanPathFollowing(Node):
         
         # self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
-        # initialize the controllers
+        # initialize the controllers for PID0
         self.trans_controller = Controller(0.65, 0.025, 0.0, 1.0, 1.0)
         self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
         # intialize the velocities
@@ -122,13 +121,11 @@ class HumanPathFollowing(Node):
             self.currentPose = np.array([x, y, theta], dtype=float)
             self.pose_stamp = Time.from_msg(msg.header.stamp)
         
-        
-        self.currentPose = np.array([x, y, theta])
-
         # Log values
-        self.get_logger().info(
-            f"x: {x:.3f}, y: {y:.3f}, yaw: {theta:.3f} rad"
-        )
+        if self.DEBUG:
+            self.get_logger().info(
+                f"x: {x:.3f}, y: {y:.3f}, yaw: {theta:.3f} rad"
+            )
 
     
     # Callback for human position updates
@@ -181,7 +178,7 @@ class HumanPathFollowing(Node):
             self.path_storage = transformed[:2, :]
             #print("Final path_storage shape:", self.path_storage.shape)
         else: 
-            warnings.warn("path_storage is empty, skipping transform.")
+            warnings.warn("path_storage is empty, skipping transform!!!.")
             return
         
         # Calculate the total length of the path
@@ -211,7 +208,7 @@ class HumanPathFollowing(Node):
             print("Length of path storage:", lenpathstorage)
             print("Path storage with new points:", self.path_storage)
        
-        # Path storage condition:
+        # Path storage condition for adding new points:
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
             if dist2laststorage > 2e-2 and (dist2human > 1.3 or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
@@ -222,7 +219,7 @@ class HumanPathFollowing(Node):
         self.wRef = 0.0
         
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
-        #dx = msg.x
+    
         if np.linalg.norm(d_rel[:2]) > self.d_stop:
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
         #if self.total_length > 1.3:
@@ -231,32 +228,32 @@ class HumanPathFollowing(Node):
          
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
             #start_time = time.time()
+
+        # calculate general geometry information from positiong
+            x_pos, y_pos = d_rel[0], d_rel[1]
+            angle = math.atan2(y_pos,x_pos)
+            if abs(angle) <= 0.08:
+                angle = 0.0
+            if self.DEBUG:
+                print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
+
+            # preprocess the path storage with loess smoothing and resampling for MPC
             if self.control == "MPC":
-                x_pos = self.path_storage[0,:]
-                y_pos = self.path_storage[1,:]
-                xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+                x_pathpoints = self.path_storage[0,:]
+                y_pathpoints = self.path_storage[1,:]
+                x_interp = np.linspace(np.min(x_pathpoints), np.max(x_pathpoints), 10)
 
                 if len(np.unique(x_pos)) < 3:
                     print("Skipping LOESS: not enough unique x values")
                     # Fallback: einfach Originalwerte benutzen
-                    xout2, yout2, weights2 = x_pos, y_pos, None
+                    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = x_pathpoints, y_pathpoints, None
                 else:
-                    xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+                    x_pathpoints_smoothed, x_pathpoints_smoothed, weights2 = loess_1d(x_pathpoints, y_pathpoints, x_interp, frac=0.5, degree=1)
                 
-                self.path_storage_smooth = np.row_stack((xout2, yout2))
-            else:   # which is PID or PID0
-                x_pos = dx
-                y_pos = dy
-
-                angle = math.atan2(y_pos,x_pos)
-                if abs(angle) <= 0.08:
-                    angle = 0.0
+                self.path_storage_smooth = np.row_stack((x_pathpoints_smoothed, x_pathpoints_smoothed))
+           
                 
-            if self.DEBUG:
-                print("dx, dy:", dx, dy) # Debugging output for current position relative to the human
-
-        
-            if dx > self.d_follow: # perform the path following control
+            if dx > self.d_follow: # perform the path following control using either MPC or PID
                 print("STATE ===> Follow the human") 
                 if self.control == "MPC":
                     # Perform MPC optimization
