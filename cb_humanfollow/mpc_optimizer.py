@@ -104,13 +104,13 @@ class MpcOptimizer:
         for k in range(self.N):
             #x_next, y_next = xs[:, 4]
             #x_ref, y_ref = xs[:, 0]
-            #x_next, y_next = xs[:, k+2]
+            x_next, y_next = xs[:, k+2]
             x_ref, y_ref = xs[:, k]
             
-            #theta_ref = np.arctan2(y_next - y_ref, x_next - x_ref)
+            theta_ref = np.arctan2(y_next - y_ref, x_next - x_ref)
             
 
-            theta_ref = np.arctan2(y_ref, x_ref)
+            #theta_ref = np.arctan2(y_ref, x_ref)
 
             v_ref = self.VRef
             omega_ref = self.OmegaRef

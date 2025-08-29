@@ -42,7 +42,7 @@ class HumanPathFollowing(Node):
 
 
         # Simulation parameters
-        self.sampleTime = 0.06          # Sample time [s], equals 20 Hz
+        self.sampleTime = 0.05          # Sample time [s], equals 20 Hz
         initPose = np.array([0, 0, 0])  # Initial pose (x, y, theta) of the robot
         self.currentPose = initPose.copy()
         self.lastPose    = initPose.copy()
@@ -57,20 +57,20 @@ class HumanPathFollowing(Node):
         # Define self.control and velocity limits
         self.numPos = 20  # Number of stored self.positions corresponding to a 1 m distance to human
         self.v_max = 0.8
-        self.omega_max = np.pi/4.0
+        self.omega_max = np.pi/2.0
         self.v_min = 0.0
         self.omega_min = -self.omega_max
-        self.MPC_Horizon = 5  # Prediction horizon for MPC
+        self.MPC_Horizon = 10  # Prediction horizon for MPC
        
 
         # === Setup MPC if selected ===
         if self.control == "MPC":
-            N = self.MPC_Horizon
+            N = self.MPC_Horizon-2
             u = np.zeros((N, 2))
 
             self.optimizeProblem = MpcOptimizer(N, self.sampleTime, u,
-                                        WeightX=100, WeightY=7, WeightTheta=0.12,
-                                        WeightV=0.01, WeightOmega=0.03,
+                                        WeightX=100, WeightY=10, WeightTheta=0.12,
+                                        WeightV=0.03, WeightOmega=0.03,
                                         WeightVLast=0.0, WeightOmegaLast=0.0,
                                         VelLim=[self.v_min, self.v_max], AngVelLim=[self.omega_min, self.omega_max])
             self.optimizeProblem.setup_problem()
@@ -295,7 +295,7 @@ class HumanPathFollowing(Node):
                     v_last = self.ctrlMsgs.value.forward
                     w_last = self.ctrlMsgs.value.left
                     self.optimizeProblem.solve_problem(path_for_mpc, [v_last,w_last]) # this shopud be the last velocity
-                    #print(time.time() - st)
+                    
                     self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
                     self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
                 elif self.control == "PID":
@@ -373,10 +373,10 @@ class HumanPathFollowing(Node):
         self.ctrlMsgs.value.left = self.wRef
 
         # publish motion command
-        #self.vel_cmd_publisher_.publish(self.ctrlMsgs)
+        self.vel_cmd_publisher_.publish(self.ctrlMsgs)
         #if self.DEBUG:
-        self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
-
+        self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}, time = {(time.time()-start_time):.2f}')
+        
 ## ======== srart of helper functions ==========
 
 
