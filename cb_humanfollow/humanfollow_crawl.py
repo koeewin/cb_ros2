@@ -20,9 +20,17 @@ import warnings
 from visualize_path import cv2_plot_path
 import cv2
 import atexit
+import threading, queue
 
-atexit.register(cv2.destroyAllWindows)
-
+# atexit.register(cv2.destroyAllWindows)
+# plot_queue = queue.Queue()
+# def plotting_loop():
+#     while True:
+#         path = plot_queue.get()
+#         if path is None:
+#             break
+#         cv2_plot_path(path)
+# threading.Thread(target=plotting_loop, daemon=True).start()
 
 class HumanPathFollowing(Node):
 
@@ -189,7 +197,11 @@ class HumanPathFollowing(Node):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if self.path_storage.shape[1] > self.numPos:
             self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten
-        cv2_plot_path(self.path_storage)  
+        
+        print("=====================================")
+        print(self.path_storage)
+        #plot_queue.put(self.path_storage.copy())
+        print("=====================================")  
 
             
         #self.path_storage = self.find_forward_points()
@@ -278,10 +290,10 @@ class HumanPathFollowing(Node):
             self.wRef = 0.0
         
         if self.path_storage.shape[1]>1:
-            self.path_storage = self.path_storage[:, 1:]
+           self.path_storage = self.path_storage[:, 1:]
                 #self.path_storage = self.find_forward_points()
-            if self.DEBUG:            
-                print("Path storage after removal:", self.path_storage)         
+            #if self.DEBUG:            
+            #    print("Path storage after removal:", self.path_storage)         
 
         
         #### ======== Publish the motion command ======== ####
