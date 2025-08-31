@@ -17,6 +17,11 @@ from motion_msgs.msg import LegMotors  # Adjust this to the correct import path
 from loess.loess_1d import loess_1d
 from Paths.path import gen_path, arclength
 import warnings
+from visualize_path import cv2_plot_path
+import cv2
+import atexit
+
+atexit.register(cv2.destroyAllWindows)
 
 
 class HumanPathFollowing(Node):
@@ -184,7 +189,7 @@ class HumanPathFollowing(Node):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if self.path_storage.shape[1] > self.numPos:
             self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten
-          
+        cv2_plot_path(self.path_storage)  
 
             
         #self.path_storage = self.find_forward_points()
@@ -192,12 +197,8 @@ class HumanPathFollowing(Node):
         self.wRef = 0.0
         
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
-        #dx = msg.x
         if np.linalg.norm(d_rel[:2]) > self.d_stop:
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
-        #if self.total_length > 1.3:
-        
-        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.5 or self.total_length > 1.5):
+
          
         #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
             #start_time = time.time()
