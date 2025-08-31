@@ -30,7 +30,7 @@ class HumanPathFollowing(Node):
         self.first_time = True  # Flag to send mode_mark on first command 
 
         # Choose self.control method
-        self.control = "PP"  # Options: MPC, PID, PID0
+        self.control = "PID0"  # Options: MPC, PID, PID0
         self.d_follow = 1.2  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
@@ -99,8 +99,6 @@ class HumanPathFollowing(Node):
             10
         ) 
         
-        # self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
-        
         # initialize the controllers for PID0
         self.trans_controller = Controller(0.65, 0.025, 0.0, 1.0, 1.0)
         self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
@@ -110,7 +108,7 @@ class HumanPathFollowing(Node):
         
         self.heightset = 0
 
-
+    # callback for odometry updates
     def odom_callback(self, msg: Odometry):
         # Position
         x = msg.pose.pose.position.x
@@ -137,7 +135,7 @@ class HumanPathFollowing(Node):
         start_time = time.time()
 
         # Update the odometry message with the current pose from parallel thread
-        # Safely read a consistent snapshot
+        # Safely read a consistent snapshot of the robot odometry
         with self.pose_lock:
             currentPose = self.currentPose.copy()
             lastPose    = self.lastPose.copy()
@@ -145,7 +143,7 @@ class HumanPathFollowing(Node):
         if self.DEBUG:
             print("Current Pose:", currentPose)
 
-        # receive the human position from the message
+        # receive the human position from the fusion message
         dx = msg.x
         dy = msg.y
         d_rel = np.array([dx, dy])
@@ -169,14 +167,7 @@ class HumanPathFollowing(Node):
             print("current_T_last:", current_T_last)
 
         if self.path_storage.size > 0:
-            # -- my be delete this part later --
-            #print("Before transform, path_storage shape:", self.path_storage.shape)
-            # tmp = np.vstack([self.path_storage,
-            #         np.zeros((1, self.path_storage.shape[1])),
-            #         np.ones((1, self.path_storage.shape[1]))])
-            #print("After vstack shape:", tmp.shape)
-            #print("current_T_last shape:", current_T_last.shape)
-
+            # Apply the transformation to all points in path_storage
             transformed = current_T_last @ np.vstack([self.path_storage, np.zeros((1, self.path_storage.shape[1])), np.ones((1, self.path_storage.shape[1]))])
             self.path_storage = transformed[:2, :]
             #print("Final path_storage shape:", self.path_storage.shape)
@@ -198,8 +189,6 @@ class HumanPathFollowing(Node):
         
         ## This part is for storing the path following condistion may be deleted later
         # If the distance to the last point is greater than 2 cm and the relative distance
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-        #if np.linalg.norm(d_rel[:2]) > 0.5
 
         # Calculate parameters for storing the path
         dist2laststorage = np.linalg.norm(self.path_storage[:, -1] - d_rel[:2])
@@ -213,11 +202,14 @@ class HumanPathFollowing(Node):
        
         # Path storage condition for adding new points at the end of the path storage:
         if self.path_storage.shape[1] > 0 :  # es gibt schon gespeicherte Punkte und nicht zu viele
-            if dist2laststorage > 5e-2 and (dist2human > self.d_stop or lenpathstorage > 1.5):
+            if dist2laststorage > 2e-2 and (dist2human > self.d_stop or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if  self.path_storage.shape[1] > self.numPos: # zu viele Punkte, entferne den ältesten
             self.path_storage = self.path_storage[:, -self.numPos:]
-        
+        print("=====================================")
+        print(self.path_storage)
+        #plot_queue.put(self.path_storage.copy())
+        print("=====================================")  
         
         
         # preprocess path storage for MPC
@@ -244,16 +236,10 @@ class HumanPathFollowing(Node):
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
     
         if dist2human > self.d_stop:
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:     // Uncomment this line to enable the condition
-        #if self.total_length > 1.3:
-        
-        #if self.path_storage.shape[1] > self.numPos and (np.linalg.norm(d_rel[:2]) > 1.5 or self.total_length > 1.5):
-         
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-            #start_time = time.time()
-
-        # calculate general geometry information from positiong
-            x_pos, y_pos = d_rel[0], d_rel[1]
+            # calculate general geometry information from positiong
+            #x_pos, y_pos = d_rel[0], d_rel[1] # use current relative position to the human
+            x_pos = self.path_storage[0,0]  # use the oldest position to the human
+            y_pos = self.path_storage[1,0]
             angle = math.atan2(y_pos,x_pos)
             if abs(angle) <= 0.08:
                 angle = 0.0
@@ -313,8 +299,6 @@ class HumanPathFollowing(Node):
                     vRef = np.clip(vRef, self.v_min, self.v_max)
                     wRef = np.clip(wRef, self.omega_min, self.omega_max)
 
-
-
                 elif self.control == "PID0":                 
                     self.rot_controller.put(angle)
                     self.trans_controller.put(abs(x_pos-self.d_follow))
@@ -344,9 +328,9 @@ class HumanPathFollowing(Node):
                     self.wRef = wRef
                                     
 
-                ## remove points if follow is run
-                #if self.path_storage.shape[1]>1:
-                #    self.path_storage = self.path_storage[:, 1:]
+                ## remove oldest points if follow is run
+                if self.path_storage.shape[1]>1:
+                    self.path_storage = self.path_storage[:, 1:]
                     #self.path_storage = self.find_forward_points()
                    
 
@@ -369,8 +353,6 @@ class HumanPathFollowing(Node):
             self.vRef = 0.0
             self.wRef = 0.0
             self.path_storage = np.zeros((2, 1))
-        
-                 
 
         
         #### ======== Publish the motion command ======== ####
