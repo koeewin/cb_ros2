@@ -41,7 +41,7 @@ class HumanPathFollowing(Node):
 
         # Choose self.control method
         self.control = "PID0"  # Options: MPC, PID, PID0
-        self.d_follow = 1.2  # Distance to follow the human in meters
+        self.d_follow = 1.25  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
         self.odom_msg = Odometry()
@@ -68,8 +68,8 @@ class HumanPathFollowing(Node):
         self.total_length = 0.0
 
         # Define self.control and velocity limits
-        self.numPos = 20  # Number of stored self.positions corresponding to a 1 m distance to human
-        self.v_max = 0.8
+        self.numPos = 30  # Number of stored self.positions corresponding to a 1 m distance to human
+        self.v_max = 1.0
         self.omega_max = np.pi/4.0
         self.v_min = 0.0
         self.omega_min = -self.omega_max
@@ -105,8 +105,8 @@ class HumanPathFollowing(Node):
         self.wheel_encoder_subscription = self.create_subscription(LegMotors, 'diablo/sensor/Motors', self.wheel_encoder_callback, 10, callback_group=self.callback_group)
         
         # initialize the controllers
-        self.trans_controller = Controller(0.65, 0.025, 0.0, 1.0, 1.0)
-        self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
+        self.trans_controller = Controller(0.8, 0.025, 0.0, 1.0, 1.0)
+        self.rot_controller = Controller(0.8,0.0,-1.5,1.5)
         # intialize the velocities
         self.wRef = 0.0
         self.vRef = 0.0
@@ -193,15 +193,15 @@ class HumanPathFollowing(Node):
        
         # Path storage condition:
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
-            if dist2laststorage > 2e-2 and (dist2human > 1.3 or lenpathstorage > 1.5):
+            if dist2laststorage > 2e-2 and (dist2human > 1.0 or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if self.path_storage.shape[1] > self.numPos:
             self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten
         
-        print("=====================================")
+        print("==============crawl===================")
         print(self.path_storage)
         #plot_queue.put(self.path_storage.copy())
-        print("=====================================")  
+     
 
             
         #self.path_storage = self.find_forward_points()
@@ -211,9 +211,6 @@ class HumanPathFollowing(Node):
         #if np.linalg.norm(d_rel[:2]) > 0.5: # if the distance to the human is greater than 0.5 m
         if np.linalg.norm(d_rel[:2]) > self.d_stop:
 
-         
-        #if np.linalg.norm(d_rel[:2]) > 1.3 or self.total_length > 1.3:
-            #start_time = time.time()
             if self.control == "MPC":
                 x_pos = self.path_storage[0,:]
                 y_pos = self.path_storage[1,:]
@@ -269,6 +266,9 @@ class HumanPathFollowing(Node):
                     self.vRef = self.trans_controller.get()
                     self.wRef = self.rot_controller.get()
 
+                    #self.vRef = 0.0
+                    #self.wRef = 0.0
+
             elif (np.linalg.norm(d_rel[:2])> self.d_stop and np.linalg.norm(d_rel[:2]) < self.d_follow) or dx < self.d_follow: #dx > self.d_stop and dx < self.d_follow: # rotate to finde the human
                 print("STATE ===> Rotate to find the human")
                 if abs(angle) <= 0.5:
@@ -278,7 +278,7 @@ class HumanPathFollowing(Node):
                     self.trans_controller.reset()
                     #self.rot_controller.put(angle)
                     #self.rot_controller.run()
-                    if angle > 0: self.wRef = 0.8
+                    if y_pos > 0: self.wRef = 0.8
                     else: self.wRef = -0.8
 
                     #self.wRef = self.rot_controller.get()+0.2
