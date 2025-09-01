@@ -55,7 +55,7 @@ class HumanPathFollowing(Node):
         self.total_length = 0.0
 
         # Define self.control and velocity limits
-        self.numPos = 20  # Number of stored self.positions corresponding to a 1,5s/ m distance to human
+        self.numPos = 30  # Number of stored self.positions corresponding to a 1,5s/ m distance to human
         self.v_max = 0.8
         self.omega_max = np.pi/2.0
         self.v_min = 0.0
