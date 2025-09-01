@@ -41,7 +41,7 @@ class HumanPathFollowing(Node):
         self.first_time = True  # Flag to send mode_mark on first command 
 
         # Choose self.control method
-        self.control = "MPC"  # Options: MPC, PID, PID0
+        self.control = "PID0"  # Options: MPC, PID, PID0
         self.d_follow = 1.25  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
@@ -54,8 +54,8 @@ class HumanPathFollowing(Node):
 
 
         # Define differential drive kinematics parameters
-        R = 0.094  # Wheel radius [m]
-        L = 0.482  # Wheelbase [m]
+        R = 0.095  # Wheel radius [m]
+        L = 0.483  # Wheelbase [m]
         self.dd = DifferentialDrive(R, L)
 
         # Simulation parameters
@@ -70,10 +70,11 @@ class HumanPathFollowing(Node):
 
         # Define self.control and velocity limits
         self.numPos = 20  # Number of stored self.positions corresponding to a 1 m distance to human
-        self.v_max = 1.0
+        self.v_max = 0.8
         self.omega_max = np.pi/4.0
         self.v_min = 0.0
         self.omega_min = -self.omega_max
+        self.predictionHorizon = 5
 
         # === Setup MPC if selected ===
         if self.control == "MPC":
@@ -81,7 +82,7 @@ class HumanPathFollowing(Node):
             u = np.zeros((N, 2))
 
             self.optimizeProblem = MpcOptimizer(N, self.sampleTime, u,
-                                        WeightX=100, WeightY=7, WeightTheta=0.12,
+                                        WeightX=50, WeightY=3, WeightTheta=0.12,
                                         WeightV=0.01, WeightOmega=0.03,
                                         WeightVLast=0.0, WeightOmegaLast=0.0,
                                         VelLim=[self.v_min, self.v_max], AngVelLim=[self.omega_min, self.omega_max])
@@ -124,8 +125,7 @@ class HumanPathFollowing(Node):
         self.lastPose = self.currentPose
 
         self.currentPose = np.array([self.odom_msg.pose.pose.position.x, self.odom_msg.pose.pose.position.y, self.odom_msg.pose.pose.orientation.z])
-        if self.DEBUG:
-            print("Current Pose:", self.currentPose)
+        print("Current Pose:", self.currentPose)
 
         # receive the human position from the message
         dx = msg.x
@@ -184,7 +184,7 @@ class HumanPathFollowing(Node):
         dist2human = np.linalg.norm(d_rel[:2])
         
         path_storage_smooth_d = preprocess.discretize_path(self.path_storage, ds=0.05)
-        path_storage_smooth_prune = preprocess.prune_prefix_behind(path_storage_d, self.currentPose, x_percent=0.50)
+        path_storage_smooth_prune = preprocess.prune_prefix_behind(path_storage_smooth_d, self.currentPose, x_percent=0.50)
         self.path_storage_smooth = path_storage_smooth_prune
         differences = np.diff(self.path_storage_smooth,axis=1)
         distances = np.sqrt(np.sum(differences**2, axis=0))
@@ -209,7 +209,7 @@ class HumanPathFollowing(Node):
 
 
         print("==============crawl===================")
-        print(self.path_storage)
+        #print(self.path_storage)
         #plot_queue.put(self.path_storage.copy())
      
         self.vRef = 0.0
@@ -232,14 +232,29 @@ class HumanPathFollowing(Node):
                 
                 # self.path_storage_smooth = np.row_stack((xout2, yout2))
                 path_storage = self.path_storage_smooth.copy()
+                if np.all(path_storage == 0):
+                    path_storage = np.array([[0.5], [0.0]])
+
                 #path_storage_d = preprocess.discretize_path(path_storage, ds=0.05)
                 #path_storage_prune = preprocess.prune_prefix_behind(path_storage_d, self.currentPose, x_percent=0.50)
-                path_storage_MPC = preprocess.adjust_pathMPC(path_storage, N=self.N) # returns 2,N+2 Path N is the prediction horizon
+                path_storage_MPC = preprocess.adjust_pathMPC(path_storage, N=self.predictionHorizon) # returns 2,N+2 Path N is the prediction horizon
+                x_pos = dx
+                y_pos = dy
+
+                angle = math.atan2(y_pos,x_pos)
+                if abs(angle) <= 0.08:
+                    angle = 0.0
             else:   # which is PID or PID0
-                #x_pos = dx
-                #y_pos = dy
-                x_pos = self.path_storage[0,0]
-                y_pos = self.path_storage[1,0]
+                
+                path_storage = self.path_storage_smooth.copy()
+                if np.all(path_storage == 0):
+                    path_storage = np.array([[0.5], [0.0]])
+                else:
+                    path_storage = preprocess.cut_path(path_storage,1.5)
+                #x_pos = path_storage[0,0]
+                #y_pos = path_storage[1,0]
+                x_pos = dx
+                y_pos = dy
 
                 angle = math.atan2(y_pos,x_pos)
                 if abs(angle) <= 0.08:
