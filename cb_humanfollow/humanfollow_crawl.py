@@ -18,6 +18,7 @@ from loess.loess_1d import loess_1d
 from Paths.path import gen_path, arclength
 import warnings
 from visualize_path import cv2_plot_path
+import preprocess_path as preprocess
 import cv2
 import atexit
 import threading, queue
@@ -40,7 +41,7 @@ class HumanPathFollowing(Node):
         self.first_time = True  # Flag to send mode_mark on first command 
 
         # Choose self.control method
-        self.control = "PID0"  # Options: MPC, PID, PID0
+        self.control = "MPC"  # Options: MPC, PID, PID0
         self.d_follow = 1.25  # Distance to follow the human in meters
         self.d_stop = 0.65  # Distance to rotate around the human in meters
 
@@ -68,7 +69,7 @@ class HumanPathFollowing(Node):
         self.total_length = 0.0
 
         # Define self.control and velocity limits
-        self.numPos = 30  # Number of stored self.positions corresponding to a 1 m distance to human
+        self.numPos = 20  # Number of stored self.positions corresponding to a 1 m distance to human
         self.v_max = 1.0
         self.omega_max = np.pi/4.0
         self.v_min = 0.0
@@ -117,7 +118,7 @@ class HumanPathFollowing(Node):
     # Callback for human position updates
     def human_position_callback(self, msg):
 
-        start_time = time.time()
+        #start_time = time.time()
 
         # Update the odometry message with the current pose from parallel thread
         self.lastPose = self.currentPose
@@ -165,16 +166,13 @@ class HumanPathFollowing(Node):
             return
         
         # Calculate the total length of the path
-        differences = np.diff(self.path_storage_smooth,axis=1)
-        distances = np.sqrt(np.sum(differences**2, axis=0))
-        self.total_length = np.sum(distances)
+        #differences = np.diff(self.path_storage_smooth,axis=1)
+        #distances = np.sqrt(np.sum(differences**2, axis=0))
+        #self.total_length = np.sum(distances)
 
-        if self.DEBUG:
-            print("Path storage after transformation:", self.path_storage)
-            print("Total length of path storage:", self.total_length)
-        
-            
- 
+        # if self.DEBUG:
+        #     print("Path storage after transformation:", self.path_storage)
+        #     print("Total length of path storage:", self.total_length)
         
         ## This part is for storing the path following condistion may be deleted later
         # If the distance to the last point is greater than 2 cm and the relative distance
@@ -184,7 +182,15 @@ class HumanPathFollowing(Node):
         # Calculate parameters for storing the path
         dist2laststorage = np.linalg.norm(self.path_storage[:, -1] - d_rel[:2])
         dist2human = np.linalg.norm(d_rel[:2])
+        
+        path_storage_smooth_d = preprocess.discretize_path(self.path_storage, ds=0.05)
+        path_storage_smooth_prune = preprocess.prune_prefix_behind(path_storage_d, self.currentPose, x_percent=0.50)
+        self.path_storage_smooth = path_storage_smooth_prune
+        differences = np.diff(self.path_storage_smooth,axis=1)
+        distances = np.sqrt(np.sum(differences**2, axis=0))
+        self.total_length = np.sum(distances)
         lenpathstorage = self.total_length
+
         if self.DEBUG:
             print("Distance to last storage point:", dist2laststorage)
             print("Distance to human:", dist2human)
@@ -193,18 +199,19 @@ class HumanPathFollowing(Node):
        
         # Path storage condition:
         if self.path_storage.shape[1] > 0:  # es gibt schon gespeicherte Punkte
-            if dist2laststorage > 2e-2 and (dist2human > 1.0 or lenpathstorage > 1.5):
+            if dist2laststorage > 5e-2 and (dist2human > 1.0 or lenpathstorage > 1.5):
                 self.path_storage = np.hstack([self.path_storage, d_rel[:2].reshape(-1, 1)])
         if self.path_storage.shape[1] > self.numPos:
-            self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten
-        
+            self.path_storage = self.path_storage[:, -self.numPos:]# zu viele Punkte, entferne den �ltesten 0: history, end: neu
+        path_storage_d = preprocess.discretize_path(self.path_storage, ds=0.05)
+        path_storage_prune = preprocess.prune_prefix_behind(path_storage_d, self.currentPose, x_percent=0.50)
+        self.path_storage = path_storage_prune
+
+
         print("==============crawl===================")
         print(self.path_storage)
         #plot_queue.put(self.path_storage.copy())
      
-
-            
-        #self.path_storage = self.find_forward_points()
         self.vRef = 0.0
         self.wRef = 0.0
         
@@ -212,18 +219,22 @@ class HumanPathFollowing(Node):
         if np.linalg.norm(d_rel[:2]) > self.d_stop:
 
             if self.control == "MPC":
-                x_pos = self.path_storage[0,:]
-                y_pos = self.path_storage[1,:]
-                xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
+                # x_pos = self.path_storage[0,:]
+                # y_pos = self.path_storage[1,:]
+                # xnew = np.linspace(np.min(x_pos), np.max(x_pos), 10)
 
-                if len(np.unique(x_pos)) < 3:
-                    print("Skipping LOESS: not enough unique x values")
-                    # Fallback: einfach Originalwerte benutzen
-                    xout2, yout2, weights2 = x_pos, y_pos, None
-                else:
-                    xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
+                # if len(np.unique(x_pos)) < 3:
+                #     print("Skipping LOESS: not enough unique x values")
+                #     # Fallback: einfach Originalwerte benutzen
+                #     xout2, yout2, weights2 = x_pos, y_pos, None
+                # else:
+                #     xout2, yout2, weights2 = loess_1d(x_pos, y_pos, xnew, frac=0.5, degree=1)
                 
-                self.path_storage_smooth = np.row_stack((xout2, yout2))
+                # self.path_storage_smooth = np.row_stack((xout2, yout2))
+                path_storage = self.path_storage_smooth.copy()
+                #path_storage_d = preprocess.discretize_path(path_storage, ds=0.05)
+                #path_storage_prune = preprocess.prune_prefix_behind(path_storage_d, self.currentPose, x_percent=0.50)
+                path_storage_MPC = preprocess.adjust_pathMPC(path_storage, N=self.N) # returns 2,N+2 Path N is the prediction horizon
             else:   # which is PID or PID0
                 #x_pos = dx
                 #y_pos = dy
@@ -243,7 +254,7 @@ class HumanPathFollowing(Node):
                 if self.control == "MPC":
                     # Perform MPC optimization
                     #st = time.time()
-                    self.optimizeProblem.solve_problem(self.path_storage_smooth, [self.vRef,self.wRef])
+                    self.optimizeProblem.solve_problem(path_storage_MPC, [self.vRef,self.wRef])
                     #print(time.time() - st)
                     self.vRef = self.optimizeProblem.Controls[0, 0]  # Linear velocity [m/s]
                     self.wRef = self.optimizeProblem.Controls[0, 1]  # Angular velocity [rad/s]
@@ -283,14 +294,18 @@ class HumanPathFollowing(Node):
 
                     #self.wRef = self.rot_controller.get()+0.2
                 self.vRef = 0.0
+                self.path_storage = np.zeros((2, 1))
+                self.path_storage_smooth = np.zeros((2, 1))
 
         else:
             print("STATE ===> STOP") 
             self.vRef = 0.0
             self.wRef = 0.0
-        
-        if self.path_storage.shape[1]>1:
-           self.path_storage = self.path_storage[:, 1:]
+            self.path_storage = np.zeros((2, 1))
+            self.path_storage_smooth = np.zeros((2, 1))
+        # ======================= this line delete the first, and the oldest point of the path storage ==========================#
+        #if self.path_storage.shape[1]>1:
+        #   self.path_storage = self.path_storage[:, 1:]
                 #self.path_storage = self.find_forward_points()
             #if self.DEBUG:            
             #    print("Path storage after removal:", self.path_storage)         
