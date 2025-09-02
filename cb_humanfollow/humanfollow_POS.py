@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from transform import body_to_world, Tz, Rz
-from  visualize import  Visualize
 from geometry_msgs.msg import Point
 import rclpy
 from rclpy.node import Node
@@ -11,9 +9,9 @@ from nav_msgs.msg import Odometry
 from rclpy.callback_groups import ReentrantCallbackGroup
 import math
 
-from Paths.path import gen_path, arclength
+#from Paths.path import gen_path, arclength
 import warnings
-from visualize_path import cv2_plot_path
+#from visualize_path import cv2_plot_path
 import cv2
 import atexit
 import threading, queue
@@ -51,11 +49,13 @@ class HumanPositionFollowing(Node):
             callback_group=self.callback_group) 
         
         # initialize the controllers
-        self.trans_controller = Controller(0.65, 0.025, 0.0, 1.0, 1.0)
-        self.rot_controller = Controller(1.0,0.0,-1.5,1.5)
+        self.trans_controller = Controller(0.85, 0.025, 0.0, 1.0, 1.0)
+        self.rot_controller = Controller(1.2,0.0,-1.6,1.6)
         # intialize the velocities
         self.wRef = 0.0
         self.vRef = 0.0
+        self.d_stop = 0.65
+        self.d_follow = 1.2
         
     
     # Callback for human position updates
@@ -66,7 +66,7 @@ class HumanPositionFollowing(Node):
         d_rel = np.array([dx, dy])
         distance_to_human = np.linalg.norm(d_rel[:2])
         angle = math.atan2(dy,dx)
-        if abs(angle) <= 0.08:
+        if abs(angle) <= 0.12:
             angle = 0.0
         if self.DEBUG:
                 print("dx, dy, angle:", dx, dy, angle) # Debugging output for current position relative to the human
@@ -90,7 +90,7 @@ class HumanPositionFollowing(Node):
 
                 elif self.control == "PID0":                 
                     self.rot_controller.put(angle)
-                    self.trans_controller.put(abs(dx-self.d_follow))
+                    self.trans_controller.put(abs(distance_to_human-self.d_follow))
 
                     self.rot_controller.run()
                     self.trans_controller.run()
