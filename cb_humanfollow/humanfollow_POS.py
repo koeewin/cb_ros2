@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from transform import body_to_world, Tz, Rz
-from differential_drive import DifferentialDrive
 from  visualize import  Visualize
 from geometry_msgs.msg import Point
 import rclpy
@@ -91,7 +90,7 @@ class HumanPositionFollowing(Node):
 
                 elif self.control == "PID0":                 
                     self.rot_controller.put(angle)
-                    self.trans_controller.put(abs(x_pos-self.d_follow))
+                    self.trans_controller.put(abs(dx-self.d_follow))
 
                     self.rot_controller.run()
                     self.trans_controller.run()
