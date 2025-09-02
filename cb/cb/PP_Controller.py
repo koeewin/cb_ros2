@@ -378,12 +378,14 @@ class PPcontroller(Node):
             # Adjust speed based on distance from start and end of path for acceleration/deceleration
             
             # Slow down near start of path
-            if abs(self.start_location - position) < accel_distance and Ld_start < accel_distance_meter:
+            #if abs(self.start_location - position) < accel_distance and Ld_start < accel_distance_meter:
+            if Ld_start < accel_distance_meter:
                 speed_percentage = (accel_distance_meter - Ld_start) / accel_distance_meter
                 Vc -= Vc * 0.8 * speed_percentage
             
             # Slow down near end of path
-            if abs((np.size(taught_path, 0) - 1) - position) < accel_distance and Ld_end < accel_distance_meter:
+            #if abs((np.size(taught_path, 0) - 1) - position) < accel_distance and Ld_end < accel_distance_meter:
+            if Ld_end < accel_distance_meter:
                 speed_percentage = (accel_distance_meter - Ld_end) / accel_distance_meter
                 Vc -= Vc * 0.8 * speed_percentage
             
@@ -421,9 +423,8 @@ class PPcontroller(Node):
             # State 0: Rotate slowly to search for the target AprilTag
             if self.DEBUG_MODE:
                 self.get_logger().warning(f'====================Align AprilTag: State 0 - Searching CCW')
-                self.get_logger().warning(f'landmark_x_corner_mean: {self.landmark_x_corner_mean}, rel_marker_ori_z: {self.rel_marker_ori_z}')
             vRef = 0.0
-            wRef = 0.1  # Rotate counterclockwise slowly
+            wRef = 0.20  # Rotate counterclockwise slowly
             
             # If orientation difference is large, and marker hasn't been seen recently, search in different direction
             if abs(teta - self.end_angle) > math.pi/2 and self.get_clock().now().to_msg().sec - self.marker_timestamp > 5 and self.search == True:
@@ -438,7 +439,7 @@ class PPcontroller(Node):
                 # If the detected tag is near center horizontally in image
                 if abs(self.frame_width/2 - self.landmark_x_corner_mean) < 20:
                     # If orientation or distance correction needed, move to state 2
-                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.2 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
+                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.15 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
                         self.homing_state = 2
                     else:
                         # Otherwise, alignment is good, move to final state 5
@@ -449,7 +450,7 @@ class PPcontroller(Node):
                 if self.landmark_x_corner_mean > self.frame_width/2:
                     self.homing_state = 1
                 if abs(self.frame_width/2 - self.landmark_x_corner_mean) < 20:
-                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.2 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
+                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.15 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
                         self.homing_state = 2
                     else:
                         self.homing_state = 5
@@ -458,12 +459,11 @@ class PPcontroller(Node):
             # State 1: Rotate slowly in the opposite direction to find the tag
             if self.DEBUG_MODE:
                 self.get_logger().warning(f'===================Align AprilTag: State 1 - Searching CW')
-                self.get_logger().warning(f'landmark_x_corner_mean: {self.landmark_x_corner_mean}, rel_marker_ori_z: {self.rel_marker_ori_z}')
 
 
             self.search = False
             vRef = 0.0
-            wRef = -0.1  # Rotate clockwise slowly
+            wRef = -0.20  # Rotate clockwise slowly
             
             # Check if AprilTag has been detected recently and correct alignment if near center
             if self.get_clock().now().to_msg().sec - self.marker_timestamp < 5 and self.backwards == False and self.end_ID == self.marker_ID:
@@ -474,7 +474,7 @@ class PPcontroller(Node):
                 # If the detected tag is near center horizontally in image   
                 if abs(self.frame_width/2 - self.landmark_x_corner_mean) < 20:
                     # If orientation or distance correction needed, move to state 2
-                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.2 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
+                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.15 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
                         self.homing_state = 2 
                     else:
                         # Otherwise, alignment is good, move to final state 5
@@ -485,7 +485,7 @@ class PPcontroller(Node):
                 if self.landmark_x_corner_mean < self.frame_width/2:
                     self.homing_state = 0
                 if abs(self.frame_width/2 - self.landmark_x_corner_mean) < 20:
-                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.2 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
+                    if (abs(self.rel_marker_ori_z - math.pi/2) > 0.15 or abs(self.rel_marker_pos_x) < 1.0) and self.corrected == False:
                         self.homing_state = 2
                     else:
                         self.homing_state = 5
@@ -635,15 +635,15 @@ class PPcontroller(Node):
         
             # Set linear velocity forward or backward depending on backup flag
             if self.backup:
-                vRef = -0.1   # Move backwards slowly
+                vRef = -0.15   # Move backwards slowly
             else:
-                vRef = 0.1    # Move forward slowly
+                vRef = 0.15    # Move forward slowly
         
             # Calculate angular velocity to correct heading based on lateral error
             wRef = 2 * vRef * corrected_pose_transformed.position.y / Ld**2
         
             # If robot has moved at least halfway to target pose, switch homing state
-            if math.sqrt(corrected_pose_transformed.position.x**2 + corrected_pose_transformed.position.y**2) < (self.dist_corrected_pose / 2):
+            if math.sqrt(corrected_pose_transformed.position.x**2 + corrected_pose_transformed.position.y**2) < (self.dist_corrected_pose*0.9): #/ 2):
                 if self.wRef_last < 0:
                     self.homing_state = 0
                 elif self.wRef_last > 0:

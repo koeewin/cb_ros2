@@ -93,8 +93,8 @@ class CurrentAprilTag(Node):
             frame = self.calib_frame(frame)
 
             # Optional live view for debugging
-            cv2.imshow("AprilTag Detection", frame)
-            cv2.waitKey(1)
+            #cv2.imshow("AprilTag Detection", frame)
+            #cv2.waitKey(1)
 
         except Exception as e:
             self.get_logger().error(f"Error converting image: {e}")

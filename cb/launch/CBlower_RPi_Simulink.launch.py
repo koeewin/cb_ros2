@@ -75,10 +75,10 @@ def generate_launch_description():
             executable="current_pose",
         ),
         
-        Node(
-            package="cb",
-            executable="pp_control",
-        ),
+        #Node(
+        #    package="cb",
+        #    executable="pp_control",
+        #),
         
         Node(
             package="cb",
