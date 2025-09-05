@@ -69,7 +69,7 @@ class UltrasonicPublisher(Node):
         msg.range = min(max(range_m, self.min_range_m) ,self.max_range_m)
 
         publisher.publish(msg)
-        self.get_logger().info(f"Published {frame_id}: {range_m:.2f} m")
+        #self.get_logger().info(f"Published {frame_id}: {range_m:.2f} m")
         
 def main(args=None):
     rclpy.init(args=args)
