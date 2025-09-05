@@ -91,6 +91,11 @@ def generate_launch_description():
             executable="state_machine_sim",
         ),
 
+        Node(
+            package="cb",
+            executable="current_ussensor",
+        ),
+
        
     
     ])

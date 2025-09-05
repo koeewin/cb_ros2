@@ -20,7 +20,7 @@ class Motionctrl_diablo(Node):
         self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
 
         # Publisher for motion control commands to DIABLO robot
-        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd', 10)
+        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_vel', 10)
 
         # Timer callback to periodically send motion commands
         self.timer = self.create_timer(0.05, self.timer_motionctrl)

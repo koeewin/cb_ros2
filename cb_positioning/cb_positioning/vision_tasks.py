@@ -32,17 +32,19 @@ import threading
 import time
 
 # Self-developed modules
-try:
-    # Relative import within the package
-    from .positioning_utils.positioning import *
-    from .positioning_utils.positioning_vision_human import *
-    from .positioning_utils.positioning_vision_apriltag import *  
-except ImportError:
-    # Normal import when running directly
-    from positioning_utils.positioning import *
-    from positioning_utils.positioning_vision_human import *
-    from positioning_utils.positioning_vision_apriltag import * 
-
+# try:
+#     # Relative import within the package
+#     from .positioning_utils.positioning import *
+#     from .positioning_utils.positioning_vision_human import *
+#     from .positioning_utils.positioning_vision_apriltag import *  
+# except ImportError:
+#     # Normal import when running directly
+#     from positioning_utils.positioning import *
+#     from positioning_utils.positioning_vision_human import *
+#     from positioning_utils.positioning_vision_apriltag import * 
+from cb_positioning.positioning_utils.positioning import *
+from cb_positioning.positioning_utils.positioning_vision_human import *
+from cb_positioning.positioning_utils.positioning_vision_apriltag import * 
 
 
 ## The height of the camera measured from the ground

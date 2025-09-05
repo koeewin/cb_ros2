@@ -38,12 +38,14 @@ setup(
             "current_image = cb.get_Image:main",
             "current_image_PiCam = cb.get_Image_PiCam:main",
             "current_AprilTag = cb.get_AprilTag:main",
+            "current_ussensor = cb.get_USSensor:main",
             "state_machine = cb.state_machine:main",
             "state_machine_sim = cb.state_machine_sim:main",
             "serial_reader = cb.get_Sensors:main",
             "tracker_pose = cb.get_Tracker:main",
             "panel_sim = cb.get_Panel_sim:main",
-            "led_service_node = cb.show_Led:main"
+            "led_service_node = cb.show_Led:main",
+            
             
         ],
     },

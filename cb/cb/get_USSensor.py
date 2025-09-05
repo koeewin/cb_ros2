@@ -7,19 +7,17 @@ import threading
 
 class UltrasonicPublisher(Node):
     def __init__(self):
-        super().__init__('ultrasonic_range_publisher')
+        super().__init__('us_sensor_publisher')
 
         # === Sensor-Konfiguration ===
         self.min_range_m = 0.02 #Meter
         self.max_range_m = 2.50 #Meter
-        self.fov_rad = 0.2618  # 15°
-
-        
+        self.fov_rad = 0.2618  # 15° in rad
 
         # === ROS2 Publisher ===
-        self.pub_left = self.create_publisher(Range, 'ultrasonic/left', 10)
-        self.pub_front = self.create_publisher(Range, 'ultrasonic/front', 10)
-        self.pub_right = self.create_publisher(Range, 'ultrasonic/right', 10)
+        self.pub_left = self.create_publisher(Range, '/sensor_us/left', 10)
+        self.pub_front = self.create_publisher(Range, '/sensor_us/front', 10)
+        self.pub_right = self.create_publisher(Range, '/sensor_us/right', 10)
 
         # === Serielle Verbindung ===
         try:
@@ -73,8 +71,6 @@ class UltrasonicPublisher(Node):
         publisher.publish(msg)
         self.get_logger().info(f"Published {frame_id}: {range_m:.2f} m")
         
-
-
 def main(args=None):
     rclpy.init(args=args)
     node = UltrasonicPublisher()
