@@ -37,7 +37,7 @@ class HumanPositionFollowing(Node):
         self.control = "PID0"  # Options: PID, PID0
 
         self.ctrlMsgs = MotionCtrl()
-        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"diablo/MotionCmd",2)   
+        self.vel_cmd_publisher_ = self.create_publisher(MotionCtrl,"diablo/MotionCmd_follow",2)   
 
         # multithreaded callback group for subscriptions
         self.callback_group = ReentrantCallbackGroup()
