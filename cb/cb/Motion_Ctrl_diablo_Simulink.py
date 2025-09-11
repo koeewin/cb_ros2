@@ -88,18 +88,18 @@ class Motionctrl_diablo(Node):
             self.first_time = False
 
             # set control modes
-        mctrl_msg.mode.stand_mode = True
-        mctrl_msg.mode.height_ctrl_mode = True
-        mctrl_msg.mode.pitch_ctrl_mode = True
+            mctrl_msg.mode.stand_mode = True
+            mctrl_msg.mode.height_ctrl_mode = True
+            mctrl_msg.mode.pitch_ctrl_mode = True
 
-        # set fixed up/pitch values
-        mctrl_msg.value.up = 1.0
-        mctrl_msg.value.pitch = 0.0
+            # set fixed up/pitch values
+            mctrl_msg.value.up = 1.0
+            mctrl_msg.value.pitch = 0.0
 
-        # default: no motion
-        mctrl_msg.value.forward = 0.0
-        mctrl_msg.value.left = 0.0
-        
+            # default: no motion
+            mctrl_msg.value.forward = 0.0
+            mctrl_msg.value.left = 0.0
+            self.mctrl_pub.publish(mctrl_msg)
 
         # handle motion logic depending on active mode
         if self.repeat == True:
@@ -123,7 +123,7 @@ class Motionctrl_diablo(Node):
 
         # publish motion command
         
-        self.mctrl_pub.publish(mctrl_msg)
+        self.mctrl_manual_pub.publish(mctrl_msg)
 
 
 def main(args=None):
