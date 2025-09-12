@@ -40,13 +40,13 @@ def generate_launch_description():
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            arguments=['0.067', '0.0', '0.4482', '0.0', '0.0', '1.0', '0.0', 'base_link', 'laser']
+            arguments=['0.067', '0.0', '0.550', '0.0', '0.0', '1.0', '0.0', 'base_link', 'laser']
         ),
         
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            arguments=['0.135', '0.0', '0.424', '0.5', '-0.5', '0.5', '-0.5', 'base_link', 'cam_link']
+            arguments=['0.210', '0.0', '0.360', '0.5', '-0.5', '0.5', '-0.5', 'base_link', 'cam_link']
         ),
         
         Node(

@@ -41,7 +41,7 @@ class CurrentAprilTag(Node):
         self.DIM = (960, 540)
 
         # AprilTag side length in meters
-        self.size_AprilTag = 0.1615
+        self.size_AprilTag = 0.062#0.1615
 
         # Locate directory with calibration matrices
         path_matrices_dir = os.path.join(self.dir_ws, 'src/cb_ros2/cb/camera_calib/camera_matrices')
@@ -93,8 +93,8 @@ class CurrentAprilTag(Node):
             frame = self.calib_frame(frame)
 
             # Optional live view for debugging
-            #cv2.imshow("AprilTag Detection", frame)
-            #cv2.waitKey(1)
+            cv2.imshow("AprilTag Detection", frame)
+            cv2.waitKey(1)
 
         except Exception as e:
             self.get_logger().error(f"Error converting image: {e}")
