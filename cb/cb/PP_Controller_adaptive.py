@@ -12,6 +12,7 @@ from tf2_ros import TransformListener
 from tf2_ros import Buffer
 from tf2_ros import TransformBroadcaster
 from tf2_geometry_msgs import do_transform_pose
+from std_msgs.msg import Bool
 import numpy as np
 import math
 import os
@@ -45,6 +46,9 @@ class PPcontroller(Node):
         # Publisher for flags
         self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
+        # Publischer for near_goal to deactivtae collision avoidance
+        self.Neargoal_pub = self.create_publisher(Bool, '/cb/near_goal', 10)
+
         # Transform broadcaster for TF2 frames
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -65,6 +69,9 @@ class PPcontroller(Node):
 
         # Cancel flag
         self.cancel = False
+
+        # Neargoal flag
+        self.near_goal = False
 
         # Dynamic Lookahead Distance
         self.dynamic_Lf = 1.0
@@ -126,6 +133,8 @@ class PPcontroller(Node):
         self.derivat = 0.0
         self.error_old = 0.0
 
+        self.near_goal = True
+
         # Timer that calls repeat-code
         self.timer = self.create_timer(0.1, self.timer_repeat)
 
@@ -142,9 +151,11 @@ class PPcontroller(Node):
             # If started without AprilTag detection: stop after condition is made and stop
             self.homed = True
             self.get_logger().info(f'home reached without AprilTag detection, stopping')
+            self.near_goal = True
         else:
             # If arrived: align robot with AprilTag
             vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
+            self.near_goal = True
         
         cmd_msg = Twist()
         Flags_msg = Flags()
@@ -168,7 +179,8 @@ class PPcontroller(Node):
             Flags_msg.homed = self.homed
             Flags_msg.cancel = False
             self.Flags_pub.publish(Flags_msg)
-
+            self.Neargoal_pub.publish(Bool(data=self.near_goal))
+            
             # self.get_logger().info(f'Driving to Node: {location}')
         else:
             # If homed or cancelled, stop all motion
@@ -191,7 +203,7 @@ class PPcontroller(Node):
             self.Flags_pub.publish(Flags_msg)
 
             self.get_logger().info('final Node reached!')
-
+            self.Neargoal_pub.publish(Bool(data=self.near_goal))
             # Stop the timer and the repeat
             self.timer.cancel()
         
@@ -285,6 +297,7 @@ class PPcontroller(Node):
         accel_distance = 150#200 # distance robot will be accelerating or breaking (number of nodes)
         wRef = 0.0 # default value
         accel_distance_meter = 2.5#5.0 # distance vor robot to accelerate or brake (meters)
+        neargoal_tol = 1.5 # distance to start/end to deactivate collision avoidance (meters)
         
         
 
@@ -328,6 +341,11 @@ class PPcontroller(Node):
         Ld_end = distance[np.size(taught_path, 0) - 1]
         Ld_start = distance[0]
         Ld_end_location = (np.size(taught_path, 0) - 1) - location  # Remaining nodes to path end
+
+        if Ld_end < neargoal_tol or Ld_start < neargoal_tol:
+            self.near_goal = True
+        else:
+            self.near_goal = False
         
         # Try to get transform from 'map' frame to 'base_link' (robot frame)
         try:
@@ -376,6 +394,7 @@ class PPcontroller(Node):
             if abs((np.size(taught_path, 0) - 1) - position) < accel_distance and Ld_end < accel_distance_meter:
                 speed_percentage = (accel_distance_meter - Ld_end) / accel_distance_meter
                 Vc -= Vc * 0.8 * speed_percentage
+            
             # calculate the Curvature
             k = next_node_transformed.position.y / Ld**2
 
