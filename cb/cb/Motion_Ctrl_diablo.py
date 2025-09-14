@@ -19,8 +19,10 @@ class Motionctrl_diablo(Node):
         # Subscriber to manual input from the joystick
         self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
 
+        self.follow_sub = self.create_subscription(MotionCtrl, '/diablo/MotionCmd_follow', self.listener_callback_follow, 10)
+
         # Publisher for motion control commands to DIABLO robot
-        self.mctrl_manual_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
+        #self.mctrl_manual_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
 
         # Publisher for motion control commands to DIABLO robot
         self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd', 10)
@@ -71,6 +73,11 @@ class Motionctrl_diablo(Node):
     def listener_callback_panel(self, msg):
         self.cur_forw_vel_panel = msg.axes[0] #  (msg.joystick.x - 128) / 230       
         self.cur_angl_vel_panel = msg.axes[1] # (msg.joystick.y - 128) / 230
+
+    # Callback for follow input
+    def listener_callback_follow(self, msg):
+        self.cur_forw_vel_follow = msg.mctrl_msg.value.forward   
+        self.cur_angl_vel_follow = msg.mctrl_msg.value.left
 
     # Timer callback to build and publish motion command to DIABLO
     def timer_motionctrl(self):
