@@ -3,13 +3,8 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    return LaunchDescription([
-
-        Node(
-            package="cb",
-            executable="current_image",
-        ),
-       
+    return LaunchDescription(
+    
         Node(
             package="cb",
             executable="current_AprilTag",
