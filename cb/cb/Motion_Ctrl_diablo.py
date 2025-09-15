@@ -76,8 +76,8 @@ class Motionctrl_diablo(Node):
 
     # Callback for follow input
     def listener_callback_follow(self, msg):
-        self.cur_forw_vel_follow = msg.mctrl_msg.value.forward   
-        self.cur_angl_vel_follow = msg.mctrl_msg.value.left
+        self.cur_forw_vel_follow = msg.value.forward   
+        self.cur_angl_vel_follow = msg.value.left
 
     # Timer callback to build and publish motion command to DIABLO
     def timer_motionctrl(self):
