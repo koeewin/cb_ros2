@@ -14,7 +14,15 @@ def generate_launch_description():
             package="cb",
             executable="led_service_node",
         ),
-        
 
-    
+        Node(
+            package="vision_tasks",
+            executable="led_service_node",
+        ),
+
+        Node(
+            package="vision_tasks",
+            executable="publish_fusion",
+        ),
+
     ])
