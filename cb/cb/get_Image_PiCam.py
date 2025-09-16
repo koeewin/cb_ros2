@@ -12,7 +12,7 @@ class CurrentImage(Node):
     def __init__(self):
         super().__init__('current_image_PiCam')
 
-        # ---- Parameters (Terminal: ros2 run pkg node --ros-args -p width:=1280 -p height:=720) ----
+        # ---- Parameters (Terminal: ros2 run cb current_image_PiCam --ros-args -p preview:=True) ----
         self.declare_parameter('width', 1920)
         self.declare_parameter('height', 1080)
         self.declare_parameter('fps', 20)

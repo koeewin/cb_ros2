@@ -140,7 +140,7 @@ class HumanPositionFollowing(Node):
         # publish motion command
         self.vel_cmd_publisher_.publish(self.ctrlMsgs)
         #if self.DEBUG:
-        self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
+        #self.get_logger().info(f'Publishing: forward={self.ctrlMsgs.value.forward:.3f}, left={self.ctrlMsgs.value.left:.3f}')
 
 ## ======== srart of helper functions ==========
 

@@ -151,6 +151,7 @@ class PPcontroller(Node):
             if self.noMarker == 0:
                 # If arrived: align robot with AprilTag
                 vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
+                self.get_logger().warning(f'home reached ===> Align AprilTag')
                 self.near_goal = True
             elif  self.noMarker == 1:
                 # If started without AprilTag detection: stop after condition is made and stop
