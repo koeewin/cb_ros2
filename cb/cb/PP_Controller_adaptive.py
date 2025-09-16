@@ -147,15 +147,17 @@ class PPcontroller(Node):
         if self.arrived == False:
             # If not arrived yet: path following with pp-controller
             vRef, wRef, location = self.ppcontroller(self.taught_path, self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
-        elif self.arrived == True and self.noMarker == 1:
-            # If started without AprilTag detection: stop after condition is made and stop
-            self.homed = True
-            self.get_logger().info(f'home reached without AprilTag detection, stopping')
-            self.near_goal = True
-        else:
-            # If arrived: align robot with AprilTag
-            vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
-            self.near_goal = True
+        elif self.arrived == True:
+            if self.noMarker == 0:
+                # If arrived: align robot with AprilTag
+                vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
+                self.near_goal = True
+            elif  self.noMarker == 1:
+                # If started without AprilTag detection: stop after condition is made and stop
+                self.homed = True
+                self.get_logger().info(f'home reached without AprilTag detection, stopping')
+                self.near_goal = True
+        
         
         cmd_msg = Twist()
         Flags_msg = Flags()
