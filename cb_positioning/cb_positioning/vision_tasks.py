@@ -157,7 +157,7 @@ class VisionTasks(Node):
         ##  Manually set by user
         #  - `True` for visualization of human and AprilTag detection
         #  - `False` otherwise 
-        self.show_ui = True 
+        self.show_ui = False 
         ##  @}    
 
         if self.show_ui:

@@ -16,12 +16,12 @@ def generate_launch_description():
         ),
 
         Node(
-            package="vision_tasks",
-            executable="led_service_node",
+            package="cb_positioning",
+            executable="vision_tasks",
         ),
 
         Node(
-            package="vision_tasks",
+            package="cb_positioning",
             executable="publish_fusion",
         ),
 
