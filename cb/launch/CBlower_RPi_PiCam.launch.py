@@ -100,6 +100,11 @@ def generate_launch_description():
             executable="current_image_PiCam",
         ),
 
+        Node(
+            package="cb_humanfollow",
+            executable="humanfollow_POS",
+        ),
+
        
     
     ])
