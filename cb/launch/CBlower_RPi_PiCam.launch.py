@@ -101,6 +101,11 @@ def generate_launch_description():
         ),
 
         Node(
+            package="cb",
+            executable="current_AprilTag",
+        ),
+
+        Node(
             package="cb_humanfollow",
             executable="humanfollow_POS",
         ),

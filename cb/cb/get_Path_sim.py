@@ -102,6 +102,7 @@ class CartographerPath(Node):
             self.start_marker_ori_y = self.rel_marker_ori_y
             self.start_marker_ori_z = self.rel_marker_ori_z
             response.start_node_saved = True
+            self.get_logger().log(f'Home-AprilTag detected Successful! Diff: {self.get_clock().now().to_msg().sec - self.marker_timestamp}')
         else:
             response.start_node_saved = True
             self.get_logger().warning(f'Home-AprilTag not detected! Diff: {self.get_clock().now().to_msg().sec - self.marker_timestamp}')
