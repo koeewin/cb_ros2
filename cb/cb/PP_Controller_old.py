@@ -4,15 +4,14 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
 from ament_index_python.packages import get_package_prefix
-from carrierbot_interfaces.srv import FollowPath
-from carrierbot_interfaces.msg import Flags
+from cb_interfaces.srv import FollowPath
+from cb_interfaces.msg import Flags
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformListener
 from tf2_ros import Buffer
 from tf2_ros import TransformBroadcaster
 from tf2_geometry_msgs import do_transform_pose
-from std_msgs.msg import Bool
 import numpy as np
 import math
 import os
@@ -29,7 +28,7 @@ class PPcontroller(Node):
         super().__init__('pp_control')
 
         # Subscriber for flags 
-        self.Flags_sub = self.create_subscription(Flags, 'carrierbot/Flags', self.listener_callback_flags, 10)
+        self.Flags_sub = self.create_subscription(Flags, 'cb/Flags', self.listener_callback_flags, 10)
 
         # Service named for path following
         self.service = self.create_service(FollowPath, '/follow_path', self.follow_path_callback)
@@ -44,10 +43,7 @@ class PPcontroller(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
         # Publisher for flags
-        self.Flags_pub = self.create_publisher(Flags, '/carrierbot/Flags', 10)
-
-        # Publischer for near_goal to deactivtae collision avoidance
-        self.Neargoal_pub = self.create_publisher(Bool, '/cb/near_goal', 10)
+        self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
         # Transform broadcaster for TF2 frames
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -59,9 +55,10 @@ class PPcontroller(Node):
         # Initial values for marker timestamp and ID
         self.marker_timestamp = 0
         self.marker_ID = 0
+        self.noMarker = 0
 
         # Width of camera frame
-        self.frame_width = 960
+        self.frame_width = 540
 
         # Initial value for mean of the x-coordinates of AprilTag corners
         self.landmark_x_corner_mean = 0
@@ -69,10 +66,8 @@ class PPcontroller(Node):
         # Cancel flag
         self.cancel = False
 
-        # Neargoal flag
-        self.near_goal = False
-
-        self.DEBUG_MODE = True
+        # Dynamic Lookahead Distance
+        self.dynamic_Lf = 1.0
 
     
     def follow_path_callback(self, request, response):
@@ -98,11 +93,13 @@ class PPcontroller(Node):
                 response.started = False
                 return response
         
-        # If no AprilTag detected recently, could abort (commented out)
-        # else:
-        #     self.get_logger().error(f'No AprilTag detected! Diff: {self.get_clock().now().to_msg().sec - self.marker_timestamp}')
-        #     response.started = False
-        #     return response
+        #If no AprilTag detected recently, could abort (commented out)
+        else:
+            self.get_logger().warning(f'No AprilTag detected! Diff: {self.get_clock().now().to_msg().sec - self.marker_timestamp}')
+            self.get_logger().warning(f'Just repeat the path')
+            self.noMarker = 1
+            #response.started = False
+            #return response
         
         # If the path should be driven backwards, invert the path array
         if self.backwards == True:
@@ -128,7 +125,6 @@ class PPcontroller(Node):
         self.integral = 0.0
         self.derivat = 0.0
         self.error_old = 0.0
-        self.near_goal = True
 
         # Timer that calls repeat-code
         self.timer = self.create_timer(0.1, self.timer_repeat)
@@ -142,10 +138,12 @@ class PPcontroller(Node):
         if self.arrived == False:
             # If not arrived yet: path following with pp-controller
             vRef, wRef, location = self.ppcontroller(self.taught_path, self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
+        elif self.arrived == True and self.noMarker == 1:
+            # If started without AprilTag detection: stop after condition is made and stop
+            self.homed = True
         else:
             # If arrived: align robot with AprilTag
             vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
-            self.near_goal = True
         
         cmd_msg = Twist()
         Flags_msg = Flags()
@@ -162,7 +160,6 @@ class PPcontroller(Node):
 
             # Publish velocity commands
             self.cmd_vel_pub.publish(cmd_msg)
-            self.Neargoal_pub.publish(Bool(data=self.near_goal))
 
             # Set and publish flags accordingly
             Flags_msg.turned_around = self.turned
@@ -170,7 +167,6 @@ class PPcontroller(Node):
             Flags_msg.homed = self.homed
             Flags_msg.cancel = False
             self.Flags_pub.publish(Flags_msg)
-           
 
             # self.get_logger().info(f'Driving to Node: {location}')
         else:
@@ -192,8 +188,8 @@ class PPcontroller(Node):
             Flags_msg.homed = self.homed
             Flags_msg.cancel = False
             self.Flags_pub.publish(Flags_msg)
-            if self.DEBUG_MODE:
-                self.get_logger().info('Autonomous Successful: final Node reached!')
+
+            self.get_logger().info('final Node reached!')
 
             # Stop the timer and the repeat
             self.timer.cancel()
@@ -278,24 +274,25 @@ class PPcontroller(Node):
 
 
     def ppcontroller(self,taught_path,x,y,teta):
-        Lf = 1.5 # look ahead distance (meters)
-        Lf_start = 1.5 # look ahead distance for start (meters)
+        Lf = 0.6#1.5 # look ahead distance (meters)
+        Lf_start = 0.6#1.5 # look ahead distance for start (meters)
         Vc = 1.0; # desired velocity in [m/s]
-        end_dist = 0.3 # Min distance between current Pose and last Node
-        end_dist_location = 30 # Min number of nodes between current Pose and last Node
+        end_dist = 0.2#0.3 # Min distance between current Pose and last Node
+        end_dist_location = 20#30 # Min number of nodes between current Pose and last Node
         max_node_skip = 50 # Max number of nodes, we can look further ahead
         turn_tol = 0.3 # tollerance for turning
-        accel_distance = 200 # distance robot will be accelerating or breaking (number of nodes)
+        accel_distance = 100#200 # distance robot will be accelerating or breaking (number of nodes)
         wRef = 0.0 # default value
-        accel_distance_meter = 5.0 # distance vor robot to accelerate or brake (meters)
-        neargoal_tol = 1.5 # distance to start/end to deactivate collision avoidance (meters)
+        accel_distance_meter = 2.0#5.0 # distance vor robot to accelerate or brake (meters)
+        
         
 
         # Calculate distance from current position (x,y) to all waypoints in taught_path
         distance = np.sqrt((taught_path[:,1] - x)**2 + (taught_path[:,2] - y)**2)
         position = np.argmin(distance)  # Index of the closest waypoint to current position
         
-        diff = abs(distance - Lf)  # Difference between each distance and lookahead distance
+        #diff = abs(distance - Lf)  # Difference between each distance and lookahead distance
+        diff = abs(distance - self.dynamic_Lf)  # Difference between each distance and lookahead distance
         
         # Initialization block when controller starts
         if self.begin == True:
@@ -330,11 +327,6 @@ class PPcontroller(Node):
         Ld_end = distance[np.size(taught_path, 0) - 1]
         Ld_start = distance[0]
         Ld_end_location = (np.size(taught_path, 0) - 1) - location  # Remaining nodes to path end
-
-        if Ld_end < neargoal_tol or Ld_start < neargoal_tol:
-            self.near_goal = True
-        else:
-            self.near_goal = False
         
         # Try to get transform from 'map' frame to 'base_link' (robot frame)
         try:
@@ -383,8 +375,15 @@ class PPcontroller(Node):
             if abs((np.size(taught_path, 0) - 1) - position) < accel_distance and Ld_end < accel_distance_meter:
                 speed_percentage = (accel_distance_meter - Ld_end) / accel_distance_meter
                 Vc -= Vc * 0.8 * speed_percentage
+            # calculate the Curvature
+            k = next_node_transformed.position.y / Ld**2
+            #self.get_logger().warning(f'Current Curvature k is : {k}')
             
-            vRef = Vc  # Forward velocity command
+            #Apply Curvature base Velocity Adjustment
+            vRef = Vc/(1+3*abs(k))  # Forward velocity command
+            self.dynamic_Lf = min(0.1 + 1*vRef, 1.0)
+            self.get_logger().warning(f'----------- vRef = {vRef}, k = {k}, Vc = {Vc}, ----- Dynamic Lf = {self.dynamic_Lf} -----------')
+         
             
             # Calculate angular velocity using pure pursuit formula: w = 2*v*y / Ld^2
             wRef = 2 * Vc * next_node_transformed.position.y / Ld**2
@@ -408,8 +407,7 @@ class PPcontroller(Node):
         
         if self.homing_state == 0:
             # State 0: Rotate slowly to search for the target AprilTag
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 0 - Searching CCW')
+            
             vRef = 0.0
             wRef = 0.1  # Rotate counterclockwise slowly
             
@@ -444,10 +442,7 @@ class PPcontroller(Node):
         
         elif self.homing_state == 1:
             # State 1: Rotate slowly in the opposite direction to find the tag
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 1 - Searching CW')
-
-
+            
             self.search = False
             vRef = 0.0
             wRef = -0.1  # Rotate clockwise slowly
@@ -479,10 +474,6 @@ class PPcontroller(Node):
         
         elif self.homing_state == 2:
             # State 2: creat correction pose
-
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 2 - creat correction pose')
-
             
             self.search = False
             
@@ -560,11 +551,6 @@ class PPcontroller(Node):
                 
 
         if self.homing_state == 3:
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 3 - Yaw-align to the correction pose')
-
-
-
             vRef = 0.0
             wRef = 0.0
             try:
@@ -605,8 +591,6 @@ class PPcontroller(Node):
                 self.homing_state = 4  
         
         if self.homing_state == 4:
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 4 - Drive to the correction pose (straightening)')
             try:
                 # Lookup transform from 'base_link' to 'map' frame 
                 transform_baselink_map = self.tf_buffer.lookup_transform('base_link', 'map', rclpy.time.Time())
@@ -638,9 +622,6 @@ class PPcontroller(Node):
         
         if self.homing_state == 5:
             # Start timer at beginning of this state
-            if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 5 - Final visual alignment & approach')
-
             if self.start_timer == 0:
                 self.start_timer = self.get_clock().now().to_msg().sec
                 self.corrected = True

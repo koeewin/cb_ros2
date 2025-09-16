@@ -77,7 +77,7 @@ def generate_launch_description():
         
         Node(
             package="cb",
-            executable="pp_control_adaptive",
+            executable="pp_control",
         ),
         
         Node(
