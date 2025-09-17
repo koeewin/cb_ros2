@@ -35,6 +35,7 @@ setup(
             "pp_control_adaptive = cb.PP_Controller_adaptive:main",
             "motionctrl_diablo = cb.Motion_Ctrl_diablo:main",
             "motionctrl_sim = cb.Motion_Ctrl_sim:main",
+            "motionctrl_simulink = cb.Motion_Ctrl_diablo_Simulink:main",
             "current_image = cb.get_Image:main",
             "current_image_PiCam = cb.get_Image_PiCam:main",
             "current_AprilTag = cb.get_AprilTag:main",

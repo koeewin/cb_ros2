@@ -19,11 +19,13 @@ class Motionctrl_diablo(Node):
         # Subscriber to manual input from the joystick
         self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
 
-        # Publisher for motion control commands to DIABLO robot
-        self.mctrl_manual_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
+        self.follow_sub = self.create_subscription(MotionCtrl, '/diablo/MotionCmd_follow', self.listener_callback_follow, 10)
 
         # Publisher for motion control commands to DIABLO robot
-        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd', 10)
+        #self.mctrl_manual_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
+
+        # Publisher for motion control commands to DIABLO robot
+        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_Pi', 10)
 
         # Timer callback to periodically send motion commands
         self.timer = self.create_timer(0.05, self.timer_motionctrl)
@@ -72,6 +74,11 @@ class Motionctrl_diablo(Node):
         self.cur_forw_vel_panel = msg.axes[0] #  (msg.joystick.x - 128) / 230       
         self.cur_angl_vel_panel = msg.axes[1] # (msg.joystick.y - 128) / 230
 
+    # Callback for follow input
+    def listener_callback_follow(self, msg):
+        self.cur_forw_vel_follow = msg.value.forward   
+        self.cur_angl_vel_follow = msg.value.left
+
     # Timer callback to build and publish motion command to DIABLO
     def timer_motionctrl(self):
         # print(f'repeat: {self.repeat}')
@@ -88,18 +95,18 @@ class Motionctrl_diablo(Node):
             self.first_time = False
 
             # set control modes
-            mctrl_msg.mode.stand_mode = True
-            mctrl_msg.mode.height_ctrl_mode = True
-            mctrl_msg.mode.pitch_ctrl_mode = True
+        mctrl_msg.mode.stand_mode = True
+        mctrl_msg.mode.height_ctrl_mode = True
+        mctrl_msg.mode.pitch_ctrl_mode = True
 
-            # set fixed up/pitch values
-            mctrl_msg.value.up = 1.0
-            mctrl_msg.value.pitch = 0.0
+        # set fixed up/pitch values
+        mctrl_msg.value.up = 1.0
+        mctrl_msg.value.pitch = 0.0
 
-            # default: no motion
-            mctrl_msg.value.forward = 0.0
-            mctrl_msg.value.left = 0.0
-            self.mctrl_pub.publish(mctrl_msg)
+        # default: no motion
+        mctrl_msg.value.forward = 0.0
+        mctrl_msg.value.left = 0.0
+        
 
         # handle motion logic depending on active mode
         if self.repeat == True:
@@ -123,7 +130,7 @@ class Motionctrl_diablo(Node):
 
         # publish motion command
         
-        self.mctrl_manual_pub.publish(mctrl_msg)
+        self.mctrl_pub.publish(mctrl_msg)
 
 
 def main(args=None):
