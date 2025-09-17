@@ -4,8 +4,8 @@ from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
 from ament_index_python.packages import get_package_prefix
-from carrierbot_interfaces.srv import FollowPath
-from carrierbot_interfaces.msg import Flags
+from cb_interfaces.srv import FollowPath
+from cb_interfaces.msg import Flags
 from scipy.spatial.transform import Rotation as R
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformListener
@@ -29,7 +29,7 @@ class PPcontroller(Node):
         super().__init__('pp_control')
 
         # Subscriber for flags 
-        self.Flags_sub = self.create_subscription(Flags, 'carrierbot/Flags', self.listener_callback_flags, 10)
+        self.Flags_sub = self.create_subscription(Flags, 'cb/Flags', self.listener_callback_flags, 10)
 
         # Service named for path following
         self.service = self.create_service(FollowPath, '/follow_path', self.follow_path_callback)
@@ -44,7 +44,7 @@ class PPcontroller(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
         # Publisher for flags
-        self.Flags_pub = self.create_publisher(Flags, '/carrierbot/Flags', 10)
+        self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
         # Publischer for near_goal to deactivtae collision avoidance
         self.Neargoal_pub = self.create_publisher(Bool, '/cb/near_goal', 10)
@@ -401,15 +401,16 @@ class PPcontroller(Node):
         # Align the robot using detected AprilTags and a state machine for homing
 
         # values for PD-controller
-        Kp = 0.5
-        Kd = 0.1
+        Kp = 0.1#0.5
+        Kd = 0.0#0.1
         Ki = 0.0
         dt = 0.1
         
         if self.homing_state == 0:
             # State 0: Rotate slowly to search for the target AprilTag
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 0 - Searching CCW')
+                self.get_logger().warning(f'====================Align AprilTag: State 0 - Searching CCW')
+                self.get_logger().warning(f'landmark_x_corner_mean: {self.landmark_x_corner_mean}, rel_marker_ori_z: {self.rel_marker_ori_z}')
             vRef = 0.0
             wRef = 0.1  # Rotate counterclockwise slowly
             
@@ -445,7 +446,8 @@ class PPcontroller(Node):
         elif self.homing_state == 1:
             # State 1: Rotate slowly in the opposite direction to find the tag
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 1 - Searching CW')
+                self.get_logger().warning(f'===================Align AprilTag: State 1 - Searching CW')
+                self.get_logger().warning(f'landmark_x_corner_mean: {self.landmark_x_corner_mean}, rel_marker_ori_z: {self.rel_marker_ori_z}')
 
 
             self.search = False
@@ -481,7 +483,7 @@ class PPcontroller(Node):
             # State 2: creat correction pose
 
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 2 - creat correction pose')
+                self.get_logger().warning(f'===================Align AprilTag: State 2 - creat correction pose')
 
             
             self.search = False
@@ -561,7 +563,7 @@ class PPcontroller(Node):
 
         if self.homing_state == 3:
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 3 - Yaw-align to the correction pose')
+                self.get_logger().warning(f'===================Align AprilTag: State 3 - Yaw-align to the correction pose')
 
 
 
@@ -606,7 +608,7 @@ class PPcontroller(Node):
         
         if self.homing_state == 4:
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 4 - Drive to the correction pose (straightening)')
+                self.get_logger().warning(f'===================Align AprilTag: State 4 - Drive to the correction pose (straightening)')
             try:
                 # Lookup transform from 'base_link' to 'map' frame 
                 transform_baselink_map = self.tf_buffer.lookup_transform('base_link', 'map', rclpy.time.Time())
@@ -639,8 +641,8 @@ class PPcontroller(Node):
         if self.homing_state == 5:
             # Start timer at beginning of this state
             if self.DEBUG_MODE:
-                self.get_logger().warning(f'Align AprilTag: State 5 - Final visual alignment & approach')
-
+                self.get_logger().warning(f'===================Align AprilTag: State 5 - Final visual alignment & approach')
+                
             if self.start_timer == 0:
                 self.start_timer = self.get_clock().now().to_msg().sec
                 self.corrected = True
@@ -672,6 +674,10 @@ class PPcontroller(Node):
                     elif self.rel_marker_pos_x - 1.0 <= 0.05 and abs(self.frame_width / 2 - self.landmark_x_corner_mean) < 20:
                         self.homed = True
                         self.search = False
+                    if self.DEBUG_MODE:
+                        self.get_logger().warning(f'===rel_marker_pos_x - 1.0: {self.rel_marker_pos_x - 1.0}, lanmark_x_corner: {self.landmark_x_corner_mean}, angle error pixel: {self.error}, wRef: {wRef}, vRef: {vRef}===')
+                    
+
         
                 # If no marker detected for longer than 3 seconds, reset homing process
                 if self.get_clock().now().to_msg().sec - self.marker_timestamp > 3:

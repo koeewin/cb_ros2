@@ -108,8 +108,8 @@ class StateMachine(Node):
 
     def state_machine(self):
         # Uncomment for debugging
-        print(f'state: {self.state}')
-        print(f'substate: {self.substate}')
+        #print(f'state: {self.state}')
+        #print(f'substate: {self.substate}')
         #----------------------------------------------------------------------------------------------
         if self.state == 1:
             # Substate 0: Switch to manual mode
@@ -396,8 +396,8 @@ class StateMachine(Node):
         
             elif self.substate == 3:
                 # Substate 3: Wait for trajectory to finish or get canceled
-                self.get_logger().warning(f'I am here substate 3')
-                self.get_logger().warning(f'self.homed: {self.homed}')
+                #self.get_logger().warning(f'I am here substate 3')
+                #self.get_logger().warning(f'self.homed: {self.homed}')
                 if self.button_e == 1:
                     # Cancel requested by user
                     self.canceled = True
