@@ -29,7 +29,7 @@ class PPcontroller(Node):
         super().__init__('pp_control')
 
         # Subscriber for flags 
-        self.Flags_sub = self.create_subscription(Flags, 'cb/Flags', self.listener_callback_flags, 10)
+        self.Flags_sub = self.create_subscription(Flags, '/cb/Flags', self.listener_callback_flags, 10)
 
         # Service named for path following
         self.service = self.create_service(FollowPath, '/follow_path', self.follow_path_callback)

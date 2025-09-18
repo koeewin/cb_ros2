@@ -4,6 +4,7 @@ from geometry_msgs.msg import Twist
 from motion_msgs.msg import MotionCtrl
 from sensor_msgs.msg import Joy
 from cb_interfaces.srv import ChangeCtrlmode
+from std_msgs.msg import UInt8 
 
 # ROS2 node to manage control modes and motion commands for the DIABLO robot
 class Motionctrl_diablo(Node):
@@ -19,13 +20,16 @@ class Motionctrl_diablo(Node):
         # Subscriber to manual input from the joystick
         self.panel_sub = self.create_subscription(Joy, '/cb/Panel', self.listener_callback_panel, 10)
 
-        self.follow_sub = self.create_subscription(MotionCtrl, '/diablo/MotionCmd_follow', self.listener_callback_follow, 10)
+        #self.follow_sub = self.create_subscription(MotionCtrl, '/diablo/MotionCmd_follow', self.listener_callback_follow, 10)
 
         # Publisher for motion control commands to DIABLO robot
         #self.mctrl_manual_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
 
         # Publisher for motion control commands to DIABLO robot
-        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_Pi', 10)
+        self.mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd', 10)
+        self.manual_mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_manual', 10)
+        self.nav_mctrl_pub = self.create_publisher(MotionCtrl, '/diablo/MotionCmd_nav', 10)
+        self.velmode_pub = self.create_publisher(UInt8, '/cb/vel_mode', 10)
 
         # Timer callback to periodically send motion commands
         self.timer = self.create_timer(0.05, self.timer_motionctrl)
@@ -45,6 +49,8 @@ class Motionctrl_diablo(Node):
         self.manuel = False
         self.follow = False
         self.repeat = False
+
+        self.velmode = 0  # 0: manual, 1: follow, 2: nav
 
     # Callback for service to change control mode
     def change_ctrlmode_callback(self, request, response):
@@ -69,68 +75,108 @@ class Motionctrl_diablo(Node):
         self.cur_forw_vel_ppcontrl = msg.linear.x        
         self.cur_angl_vel_ppcontrl = msg.angular.z
 
+         # Create MotionCtrl message
+        mctrl_msg = MotionCtrl()
+        mctrl_msg.value.forward = 0.0
+        mctrl_msg.value.left = 0.0
+        mctrl_msg.value.forward = float(msg.linear.x)
+        mctrl_msg.value.left = float(msg.angular.z)
+
+        # Optionally set mode flags if required by your robot
+        mctrl_msg.mode.stand_mode = True
+        mctrl_msg.mode.height_ctrl_mode = True
+        mctrl_msg.mode.pitch_ctrl_mode = True
+        mctrl_msg.value.up = 1.0
+        mctrl_msg.value.pitch = 0.0
+
+        # Publish to /diablo/MotionCmd_nav
+        self.nav_mctrl_pub.publish(mctrl_msg)
+
     # Callback for joystick input
     def listener_callback_panel(self, msg):
         self.cur_forw_vel_panel = msg.axes[0] #  (msg.joystick.x - 128) / 230       
         self.cur_angl_vel_panel = msg.axes[1] # (msg.joystick.y - 128) / 230
+        if abs(self.cur_forw_vel_panel) < 0.05 and abs(self.cur_angl_vel_panel) < 0.05:
+        # both values too small -> do not publish anything
+            return
 
+        mctrl_msg = MotionCtrl()
+        mctrl_msg.value.forward = 0.0
+        mctrl_msg.value.left = 0.0
+        if self.cur_forw_vel_panel != 0 or self.cur_angl_vel_panel != 0:
+            if abs(self.cur_forw_vel_panel) > 0.1:
+                mctrl_msg.value.forward = self.cur_forw_vel_panel
+            if abs(self.cur_angl_vel_panel) > 0.1:
+                mctrl_msg.value.left = self.cur_angl_vel_panel
+        self.manual_mctrl_pub.publish(mctrl_msg)
     # Callback for follow input
-    def listener_callback_follow(self, msg):
-        self.cur_forw_vel_follow = msg.value.forward   
-        self.cur_angl_vel_follow = msg.value.left
+    # def listener_callback_follow(self, msg):
+    #     self.cur_forw_vel_follow = msg.value.forward   
+    #     self.cur_angl_vel_follow = msg.value.left
 
     # Timer callback to build and publish motion command to DIABLO
     def timer_motionctrl(self):
         # print(f'repeat: {self.repeat}')
         # print(f'manuel: {self.manuel}')
-        # print(f'follow: {self.follow}')
-        
-        # write msg for diablo motion ctrl
-        mctrl_msg = MotionCtrl()
-        mctrl_msg.mode_mark = False
+        # print(f'follow: {self.follow}')       
 
         # only first message should have mode_mark=True (robot will stand up)
+        velmode_msg = UInt8()
         if self.first_time == True:
+            # write msg for diablo motion ctrl
+            mctrl_msg = MotionCtrl()
+            #mctrl_msg.mode_mark = False
             mctrl_msg.mode_mark = True
             self.first_time = False
 
             # set control modes
-        mctrl_msg.mode.stand_mode = True
-        mctrl_msg.mode.height_ctrl_mode = True
-        mctrl_msg.mode.pitch_ctrl_mode = True
+            mctrl_msg.mode.stand_mode = True
+            mctrl_msg.mode.height_ctrl_mode = True
+            mctrl_msg.mode.pitch_ctrl_mode = True
 
-        # set fixed up/pitch values
-        mctrl_msg.value.up = 1.0
-        mctrl_msg.value.pitch = 0.0
+            # set fixed up/pitch values
+            mctrl_msg.value.up = 1.0
+            mctrl_msg.value.pitch = 0.0
 
-        # default: no motion
-        mctrl_msg.value.forward = 0.0
-        mctrl_msg.value.left = 0.0
+            # default: no motion
+            mctrl_msg.value.forward = 0.0
+            mctrl_msg.value.left = 0.0
+            self.mctrl_pub.publish(mctrl_msg)
         
 
         # handle motion logic depending on active mode
-        if self.repeat == True:
-            if self.cur_forw_vel_ppcontrl is not None:
-                mctrl_msg.value.forward = self.cur_forw_vel_ppcontrl
-            if self.cur_angl_vel_ppcontrl is not None:
-                mctrl_msg.value.left = self.cur_angl_vel_ppcontrl
-
-        elif self.manuel == True:
-            if self.cur_forw_vel_panel != 0 or self.cur_angl_vel_panel != 0:
-                if abs(self.cur_forw_vel_panel) > 0.1:
-                    mctrl_msg.value.forward = self.cur_forw_vel_panel
-                if abs(self.cur_angl_vel_panel) > 0.1:
-                    mctrl_msg.value.left = self.cur_angl_vel_panel
-
+        if self.manuel == True:
+            self.velmode = 0
         elif self.follow == True:
-            if self.cur_forw_vel_follow is not None:
-                mctrl_msg.value.forward = self.cur_forw_vel_follow
-            if self.cur_angl_vel_follow is not None:
-                mctrl_msg.value.left = self.cur_angl_vel_follow
+            self.velmode = 1
+        elif self.repeat == True:
+            self.velmode = 2
+        else:
+            self.velmode = 100  # no valid mode
+        velmode_msg.data = self.velmode
+    
+        # if self.cur_forw_vel_panel != 0 or self.cur_angl_vel_panel != 0:
+        #     if abs(self.cur_forw_vel_panel) > 0.1:
+        #         mctrl_msg.value.forward = self.cur_forw_vel_panel
+        #     if abs(self.cur_angl_vel_panel) > 0.1:
+        #         mctrl_msg.value.left = self.cur_angl_vel_panel
 
-        # publish motion command
         
-        self.mctrl_pub.publish(mctrl_msg)
+        #     if self.cur_forw_vel_ppcontrl is not None:
+        #         mctrl_msg.value.forward = self.cur_forw_vel_ppcontrl
+        #     if self.cur_angl_vel_ppcontrl is not None:
+        #         mctrl_msg.value.left = self.cur_angl_vel_ppcontrl
+
+
+
+        # elif self.follow == True:
+        #     if self.cur_forw_vel_follow is not None:
+        #         mctrl_msg.value.forward = self.cur_forw_vel_follow
+        #     if self.cur_angl_vel_follow is not None:
+        #         mctrl_msg.value.left = self.cur_angl_vel_follow
+        
+        #======publish data========#
+        self.velmode_pub.publish(velmode_msg)
 
 
 def main(args=None):
@@ -138,7 +184,7 @@ def main(args=None):
     node = Motionctrl_diablo()
     rclpy.spin(node)
     node.destroy_node()
-    rclpy.shutdown
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
