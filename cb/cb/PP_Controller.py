@@ -47,7 +47,7 @@ class PPcontroller(Node):
         self.Flags_pub = self.create_publisher(Flags, '/cb/Flags', 10)
 
         # Publischer for near_goal to deactivtae collision avoidance
-        self.Neargoal_pub = self.create_publisher(Bool, '/cb/near_goal', 10)
+        self.collision_avoidance_active_pub = self.create_publisher(Bool, '/cb/collision_avoidance_active', 10)
 
         # Transform broadcaster for TF2 frames
         self.tf_broadcaster = TransformBroadcaster(self)
@@ -69,8 +69,8 @@ class PPcontroller(Node):
         # Cancel flag
         self.cancel = False
 
-        # Neargoal flag
-        self.near_goal = False
+        # collision_avoidance_active flag
+        self.collision_avoidance_active = False
 
         self.DEBUG_MODE = True
 
@@ -128,7 +128,7 @@ class PPcontroller(Node):
         self.integral = 0.0
         self.derivat = 0.0
         self.error_old = 0.0
-        self.near_goal = True
+        self.collision_avoidance_active = False
 
         # Timer that calls repeat-code
         self.timer = self.create_timer(0.1, self.timer_repeat)
@@ -145,7 +145,7 @@ class PPcontroller(Node):
         else:
             # If arrived: align robot with AprilTag
             vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
-            self.near_goal = True
+            self.collision_avoidance_active = False
         
         cmd_msg = Twist()
         Flags_msg = Flags()
@@ -162,7 +162,7 @@ class PPcontroller(Node):
 
             # Publish velocity commands
             self.cmd_vel_pub.publish(cmd_msg)
-            self.Neargoal_pub.publish(Bool(data=self.near_goal))
+            self.collision_avoidance_active_pub.publish(Bool(data=self.collision_avoidance_active))
 
             # Set and publish flags accordingly
             Flags_msg.turned_around = self.turned
@@ -182,9 +182,11 @@ class PPcontroller(Node):
             cmd_msg.angular.x= 0.0
             cmd_msg.angular.y= 0.0
             cmd_msg.angular.z= 0.0
-
+            
             # Publish stop command
             self.cmd_vel_pub.publish(cmd_msg)
+            self.collision_avoidance_active = False
+            self.collision_avoidance_active_pub.publish(Bool(data=self.collision_avoidance_active))
 
             # Update flags
             Flags_msg.turned_around = self.turned
@@ -288,7 +290,7 @@ class PPcontroller(Node):
         accel_distance = 200 # distance robot will be accelerating or breaking (number of nodes)
         wRef = 0.0 # default value
         accel_distance_meter = 5.0 # distance vor robot to accelerate or brake (meters)
-        neargoal_tol = 1.5 # distance to start/end to deactivate collision avoidance (meters)
+        cs_active_distance_meter = 2.0 # distance to start/end to deactivate collision avoidance (meters)
         
 
         # Calculate distance from current position (x,y) to all waypoints in taught_path
@@ -331,10 +333,6 @@ class PPcontroller(Node):
         Ld_start = distance[0]
         Ld_end_location = (np.size(taught_path, 0) - 1) - location  # Remaining nodes to path end
 
-        if Ld_end < neargoal_tol or Ld_start < neargoal_tol:
-            self.near_goal = True
-        else:
-            self.near_goal = False
         
         # Try to get transform from 'map' frame to 'base_link' (robot frame)
         try:
@@ -388,6 +386,14 @@ class PPcontroller(Node):
             
             # Calculate angular velocity using pure pursuit formula: w = 2*v*y / Ld^2
             wRef = 2 * Vc * next_node_transformed.position.y / Ld**2
+
+
+            ## ===== Adjust the collision_avoidance_active flag ===== ##
+            if Ld_start > cs_active_distance_meter and Ld_end > cs_active_distance_meter:
+                # If close to start or end of path, deactivate collision avoidance
+                self.collision_avoidance_active = True
+            else:
+                self.collision_avoidance_active = False
         
         # Check if robot has arrived at the goal location based on distance thresholds
         if Ld_end < end_dist and Ld_end_location < end_dist_location and self.arrived == False:
