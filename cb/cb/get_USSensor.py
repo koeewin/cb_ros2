@@ -66,6 +66,9 @@ class UltrasonicPublisher(Node):
         msg.max_range = self.max_range_m
 
         range_m = cm_value / 100.0
+        # If the measured distance is less than 3 cm, set it to max_range
+        if cm_value < 3:
+            range_m = self.max_range_m
         msg.range = min(max(range_m, self.min_range_m) ,self.max_range_m)
 
         publisher.publish(msg)
