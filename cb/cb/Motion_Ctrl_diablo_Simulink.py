@@ -96,17 +96,14 @@ class Motionctrl_diablo(Node):
     def listener_callback_panel(self, msg):
         self.cur_forw_vel_panel = msg.axes[0] #  (msg.joystick.x - 128) / 230       
         self.cur_angl_vel_panel = msg.axes[1] # (msg.joystick.y - 128) / 230
-        if abs(self.cur_forw_vel_panel) < 0.05 and abs(self.cur_angl_vel_panel) < 0.05:
-        # both values too small -> do not publish anything
-            return
 
         mctrl_msg = MotionCtrl()
         mctrl_msg.value.forward = 0.0
         mctrl_msg.value.left = 0.0
         if self.cur_forw_vel_panel != 0 or self.cur_angl_vel_panel != 0:
-            if abs(self.cur_forw_vel_panel) > 0.1:
+            if abs(self.cur_forw_vel_panel) > 0.05:
                 mctrl_msg.value.forward = self.cur_forw_vel_panel
-            if abs(self.cur_angl_vel_panel) > 0.1:
+            if abs(self.cur_angl_vel_panel) > 0.05:
                 mctrl_msg.value.left = self.cur_angl_vel_panel
         self.manual_mctrl_pub.publish(mctrl_msg)
     # Callback for follow input
