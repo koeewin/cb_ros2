@@ -144,6 +144,9 @@ class PPcontroller(Node):
             vRef, wRef, location = self.ppcontroller(self.taught_path, self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
         else:
             # If arrived: align robot with AprilTag
+            if self.DEBUG_MODE:
+                self.get_logger().warning('============Arrived at final Node, starting AprilTag alignment===========')
+                self.get_logger().warning('============Record Tracker Coordinate using VICRA===========')
             vRef, wRef = self.align_AprilTag(self.cur_pos_x, self.cur_pos_y, self.cur_ori_z)
             self.collision_avoidance_active = False
         
@@ -196,6 +199,8 @@ class PPcontroller(Node):
             self.Flags_pub.publish(Flags_msg)
             if self.DEBUG_MODE:
                 self.get_logger().info('Autonomous Successful: final Node reached!')
+                self.get_logger().warning('============Homing Finisched===========')
+                self.get_logger().warning('============Record Tracker Coordinate using VICRA===========')
 
             # Stop the timer and the repeat
             self.timer.cancel()
@@ -630,9 +635,9 @@ class PPcontroller(Node):
         
             # Set linear velocity forward or backward depending on backup flag
             if self.backup:
-                vRef = -0.05   # Move backwards slowly
+                vRef = -0.1   # Move backwards slowly
             else:
-                vRef = 0.05    # Move forward slowly
+                vRef = 0.1    # Move forward slowly
         
             # Calculate angular velocity to correct heading based on lateral error
             wRef = 2 * vRef * corrected_pose_transformed.position.y / Ld**2
