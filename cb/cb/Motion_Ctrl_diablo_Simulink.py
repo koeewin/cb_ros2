@@ -105,6 +105,10 @@ class Motionctrl_diablo(Node):
                 mctrl_msg.value.forward = self.cur_forw_vel_panel
             if abs(self.cur_angl_vel_panel) > 0.05:
                 mctrl_msg.value.left = self.cur_angl_vel_panel
+            if abs(self.cur_forw_vel_panel) > 0.99 and abs(self.cur_angl_vel_panel) > 0.99:# error state, when handset is not on on start up.
+                mctrl_msg.value.forward = 0.0
+                mctrl_msg.value.left = 0.0
+
         self.manual_mctrl_pub.publish(mctrl_msg)
     # Callback for follow input
     # def listener_callback_follow(self, msg):

@@ -424,7 +424,7 @@ class PPcontroller(Node):
             if self.DEBUG_MODE:
                 self.get_logger().warning(f'====================Align AprilTag: State 0 - Searching CCW')
             vRef = 0.0
-            wRef = 0.20  # Rotate counterclockwise slowly
+            wRef = 0.15  # Rotate counterclockwise slowly
             
             # If orientation difference is large, and marker hasn't been seen recently, search in different direction
             if abs(teta - self.end_angle) > math.pi/2 and self.get_clock().now().to_msg().sec - self.marker_timestamp > 5 and self.search == True:
@@ -463,7 +463,7 @@ class PPcontroller(Node):
 
             self.search = False
             vRef = 0.0
-            wRef = -0.20  # Rotate clockwise slowly
+            wRef = -0.15  # Rotate clockwise slowly
             
             # Check if AprilTag has been detected recently and correct alignment if near center
             if self.get_clock().now().to_msg().sec - self.marker_timestamp < 5 and self.backwards == False and self.end_ID == self.marker_ID:
@@ -682,11 +682,11 @@ class PPcontroller(Node):
                         vRef = 0.1
         
                     # If close to desired x and well centered, finish homing
-                    elif self.rel_marker_pos_x - 1.0 <= 0.05 and abs(self.frame_width / 2 - self.landmark_x_corner_mean) < 20:
+                    elif self.rel_marker_pos_x - 1.0 <= 0.15 and abs(self.frame_width / 2 - self.landmark_x_corner_mean) < 20:
                         self.homed = True
                         self.search = False
                     if self.DEBUG_MODE:
-                        self.get_logger().warning(f'===rel_marker_pos_x - 1.0: {self.rel_marker_pos_x - 1.0}, lanmark_x_corner: {self.landmark_x_corner_mean}, angle error pixel: {self.error}, wRef: {wRef}, vRef: {vRef}===')
+                        self.get_logger().warning(f'===rel_marker_pos_x - 1.0<0.15: {self.rel_marker_pos_x - 1.0}, lanmark_x_corner: {self.landmark_x_corner_mean}, angle error pixel: {self.error}, wRef: {wRef}, vRef: {vRef}===')
                     
 
         

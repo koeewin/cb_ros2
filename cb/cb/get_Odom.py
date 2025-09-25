@@ -37,7 +37,7 @@ class DiabloOdometry(Node):
         right_wheel_enc_rev = msg.right_wheel_enc_rev
 
         left_wheel_vel = msg.left_wheel_vel * self.robot._R_WHEEL
-        right_wheel_vel = msg.right_knee_vel * self.robot._R_WHEEL
+        right_wheel_vel = msg.right_wheel_vel * self.robot._R_WHEEL
 
         # Calculate the current positions based on the encoder readings
         current_left_wheel_pos = msg.left_wheel_pos + left_wheel_enc_rev * 2 * math.pi

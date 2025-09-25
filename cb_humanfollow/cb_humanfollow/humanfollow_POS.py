@@ -30,7 +30,7 @@ class HumanPositionFollowing(Node):
 
     def __init__(self):
         super().__init__('human_path_following_controller')
-        self.DEBUG = False  # Set to True for debugging output
+        self.DEBUG = True  # Set to True for debugging output
         self.first_time = True  # Flag to send mode_mark on first command 
 
         # Choose self.control method
@@ -50,7 +50,7 @@ class HumanPositionFollowing(Node):
         
         # initialize the controllers
         self.trans_controller = Controller(0.85, 0.025, 0.0, 1.0, 1.0)
-        self.rot_controller = Controller(1.2,0.0,-1.6,1.6)
+        self.rot_controller = Controller(0.8,0.0,-1.0,1.0)
         # intialize the velocities
         self.wRef = 0.0
         self.vRef = 0.0
@@ -66,7 +66,7 @@ class HumanPositionFollowing(Node):
         d_rel = np.array([dx, dy])
         distance_to_human = np.linalg.norm(d_rel[:2])
         angle = math.atan2(dy,dx)
-        if abs(angle) <= 0.12:
+        if abs(angle) <= 0.08:
             angle = 0.0
         if self.DEBUG:
                 print("dx, dy, angle:", dx, dy, angle) # Debugging output for current position relative to the human
