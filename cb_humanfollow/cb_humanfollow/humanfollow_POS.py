@@ -50,7 +50,7 @@ class HumanPositionFollowing(Node):
         
         # initialize the controllers
         self.trans_controller = Controller(0.85, 0.025, 0.0, 1.0, 1.0)
-        self.rot_controller = Controller(0.8,0.0,-1.0,1.0)
+        self.rot_controller = Controller(0.65,0.0,-1.0,1.0)
         # intialize the velocities
         self.wRef = 0.0
         self.vRef = 0.0
@@ -66,7 +66,7 @@ class HumanPositionFollowing(Node):
         d_rel = np.array([dx, dy])
         distance_to_human = np.linalg.norm(d_rel[:2])
         angle = math.atan2(dy,dx)
-        if abs(angle) <= 0.08:
+        if abs(angle) <= 0.12:
             angle = 0.0
         if self.DEBUG:
                 print("dx, dy, angle:", dx, dy, angle) # Debugging output for current position relative to the human
@@ -101,7 +101,7 @@ class HumanPositionFollowing(Node):
             # rotate to find the human
             elif (distance_to_human> self.d_stop and distance_to_human < self.d_follow) or dx < self.d_follow: #dx > self.d_stop and dx < self.d_follow: # rotate to finde the human
                 print("STATE ===> Rotate to find the human")
-                if abs(angle) <= 0.6:
+                if abs(angle) <= 0.12:
                     angle = 0.0
                     self.wRef = 0.0
                 else:
