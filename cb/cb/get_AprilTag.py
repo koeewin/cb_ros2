@@ -5,6 +5,7 @@ import cv2
 import os
 import time
 from cv_bridge import CvBridge
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import numpy as np
 from ament_index_python.packages import get_package_prefix
 from geometry_msgs.msg import TransformStamped
@@ -13,6 +14,7 @@ from scipy.spatial.transform import Rotation as R
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from std_msgs.msg import String
+
 
 # ROS 2 node that subscribes to a camera image topic, detects AprilTags,
 # publishes their estimated pose via TF, and publishes marker messages for visualization.
@@ -83,6 +85,18 @@ class CurrentAprilTag(Node):
         self.arucoDict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
         self.arucoParams = cv2.aruco.DetectorParameters_create()
 
+
+        self.publish_annotated_image = True
+        # Publisher to publish images on the '/image' topic
+        if self.publish_annotated_image:
+            qos = QoSProfile(
+                reliability=ReliabilityPolicy.BEST_EFFORT,  # good for video streams
+                history=HistoryPolicy.KEEP_LAST,
+                depth=10
+                )
+
+            self.image_pub = self.create_publisher(Image, '/image_PiCam/annotated', qos)
+
     def listener_callback_image(self, msg):
         """Callback function that processes incoming image messages."""
         try:
@@ -115,6 +129,7 @@ class CurrentAprilTag(Node):
         try:
             # Detect AprilTag markers in the frame
             corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame,self.arucoDict,parameters=self.arucoParams)
+            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
             # savin 2D marker corner points in message Point
             corner_vec = []
@@ -171,6 +186,33 @@ class CurrentAprilTag(Node):
 
                 # Publish the marker
                 self.landmark_pub.publish(marker_msg)
+
+                if self.publish_annotated_image:
+                     # Draw axes (use proper shapes)
+                    try:
+                        cv2.drawFrameAxes(
+                            frame,
+                            self.matrix_coefficients,
+                            self.distortion_coefficients,
+                            rvec[0][0], tvec[0][0],
+                            0.06
+                        )
+                    except Exception:
+                        pass
+
+                    cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+
+                    
+                    cv2.imshow("AprilTag Detection", frame)
+                    cv2.waitKey(1)
+                    try:
+                        img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+                        img_msg.header.stamp = self.get_clock().now().to_msg()
+                        img_msg.header.frame_id = 'cam_link'
+                        self.image_pub.publish(img_msg)
+                    except Exception as e:
+                        self.get_logger().warn(f'Failed to publish annotated image: {e}')
+
 
 
 def main(args=None):

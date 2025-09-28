@@ -72,7 +72,7 @@ class PPcontroller(Node):
         # collision_avoidance_active flag
         self.collision_avoidance_active = False
 
-        self.DEBUG_MODE = True
+        self.DEBUG_MODE = False
 
     
     def follow_path_callback(self, request, response):
