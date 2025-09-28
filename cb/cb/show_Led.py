@@ -42,8 +42,8 @@ class LEDServiceNode(Node):
             elif mode == 1:
                 # Mode 1: Follow    Upper 2 Blue   ID:0,1
                 # Mode 0: Set all LEDs to blue
-                self.led.stop_blink()  # Stop any ongoing blinking
-                self.led.fill(0, 0, 0)
+                #self.led.stop_blink()  # Stop any ongoing blinking
+                #self.led.fill(0, 0, 0)
                 self.get_logger().info(f"Previous Mode tured off and starting Follow: {mode}")
                 self.led.fill_selected( [0,1], 0, 0, 125)
                 response.result = 0
