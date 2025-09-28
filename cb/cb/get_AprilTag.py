@@ -89,13 +89,8 @@ class CurrentAprilTag(Node):
         self.publish_annotated_image = True
         # Publisher to publish images on the '/image' topic
         if self.publish_annotated_image:
-            qos = QoSProfile(
-                reliability=ReliabilityPolicy.BEST_EFFORT,  # good for video streams
-                history=HistoryPolicy.KEEP_LAST,
-                depth=10
-                )
 
-            self.image_pub = self.create_publisher(Image, '/image_PiCam/annotated', qos)
+            self.image_pub = self.create_publisher(Image, '/image_PiCam/annotated', 10)
 
     def listener_callback_image(self, msg):
         """Callback function that processes incoming image messages."""
@@ -126,25 +121,25 @@ class CurrentAprilTag(Node):
 
     def detect_AprilTag(self, frame):
         """Detects AprilTags in the input frame and publishes the pose via TF and Marker."""
-        try:
+        
             # Detect AprilTag markers in the frame
-            corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame,self.arucoDict,parameters=self.arucoParams)
-            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+        corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame,self.arucoDict,parameters=self.arucoParams)
+        
+        if len(frame.shape) == 2 or frame.shape[2] == 1:
+            # If grayscale, convert to color
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
 
             # savin 2D marker corner points in message Point
-            corner_vec = []
+        corner_vec = []
+        if len(corners) > 0:
+            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+            ids = ids.flatten()  # Flatten ID array
             for corner in corners[0][0]:
                 point = Point()
                 point.x = float(corner[0])
                 point.y = float(corner[1])
                 point.z = 0.0  # Not used
-                corner_vec.append(point)
-        except Exception:
-            # No marker detected or failed detection
-            return
-
-        if len(corners) > 0:
-            ids = ids.flatten()  # Flatten ID array
+                corner_vec.append(point)           
 
             for (markerCorner, markerID) in zip(corners, ids):
                 # Estimate pose of the marker
@@ -202,16 +197,17 @@ class CurrentAprilTag(Node):
 
                     cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
-                    
-                    cv2.imshow("AprilTag Detection", frame)
-                    cv2.waitKey(1)
-                    try:
-                        img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-                        img_msg.header.stamp = self.get_clock().now().to_msg()
-                        img_msg.header.frame_id = 'cam_link'
-                        self.image_pub.publish(img_msg)
-                    except Exception as e:
-                        self.get_logger().warn(f'Failed to publish annotated image: {e}')
+        if self.publish_annotated_image:
+            #cv2.imshow("AprilTag Detection", frame)
+            #cv2.waitKey(1)
+            try:
+                img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+                #img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='mono8')
+                img_msg.header.stamp = self.get_clock().now().to_msg()
+                img_msg.header.frame_id = 'cam_link'
+                self.image_pub.publish(img_msg)
+            except Exception as e:
+                self.get_logger().warn(f'Failed to publish annotated image: {e}')
 
 
 
