@@ -170,13 +170,13 @@ class CartographerPath(Node):
         self.cut_path()
         response.start_node = self.start_node
         response.final_node = index
-        #response.traj_num = self.marker_ID
-        response.traj_num = 1
+        response.traj_num = self.marker_ID
+        #response.traj_num = 1
 
 
         if error == False:
-            #response.csv_path = self.generate_csv(self.marker_ID)
-            response.csv_path = self.generate_csv(1)
+            response.csv_path = self.generate_csv(self.marker_ID)
+            #response.csv_path = self.generate_csv(1)
             self.start_node = 0
             self.start_marker_ID = 0
             self.start_marker_pose_x = 0.0

@@ -89,7 +89,7 @@ class CurrentAprilTag(Node):
         self.publish_annotated_image = True
         # Publisher to publish images on the '/image' topic
         if self.publish_annotated_image:
-
+            self.counter = 0
             self.image_pub = self.create_publisher(Image, '/image_PiCam/annotated', 10)
 
     def listener_callback_image(self, msg):
@@ -121,7 +121,7 @@ class CurrentAprilTag(Node):
 
     def detect_AprilTag(self, frame):
         """Detects AprilTags in the input frame and publishes the pose via TF and Marker."""
-        
+        self.counter += 1
             # Detect AprilTag markers in the frame
         corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(frame,self.arucoDict,parameters=self.arucoParams)
         
@@ -197,12 +197,15 @@ class CurrentAprilTag(Node):
 
                     cv2.aruco.drawDetectedMarkers(frame, corners, ids)
 
-        if self.publish_annotated_image:
+        if self.publish_annotated_image and self.counter >=2:
+            self.counter =0
             #cv2.imshow("AprilTag Detection", frame)
             #cv2.waitKey(1)
             try:
-                img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-                #img_msg = self.bridge.cv2_to_imgmsg(frame, encoding='mono8')
+                resized_frame = cv2.resize(frame,(480,270))
+                #gray_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
+                img_msg = self.bridge.cv2_to_imgmsg(resized_frame, encoding='bgr8')
+                #img_msg = self.bridge.cv2_to_imgmsg(gray_frame, encoding='mono8')
                 img_msg.header.stamp = self.get_clock().now().to_msg()
                 img_msg.header.frame_id = 'cam_link'
                 self.image_pub.publish(img_msg)
